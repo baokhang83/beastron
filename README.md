@@ -1,0 +1,2 @@
+# Firox
+Coding Agent
