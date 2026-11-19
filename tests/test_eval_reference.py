@@ -36,6 +36,10 @@ FAKE = textwrap.dedent('''\
     if mode == "crash":
         print("boom: not logged in", file=sys.stderr)
         sys.exit(1)
+    if mode == "limit":
+        emit({{"type": "result", "subtype": "success", "is_error": True, "num_turns": 1,
+               "result": "You've hit your 5-hour limit · resets 3pm", "usage": {{}}}})
+        sys.exit(0)
     if mode == "hang":
         time.sleep(60)
     if mode == "pass":
@@ -201,3 +205,37 @@ def test_the_sandbox_lets_claude_code_write_its_state_but_not_elsewhere(tmp_path
     denied = subprocess.run(prefix + ["/bin/sh", "-c", f"echo x > '{home}/beastron-sandbox-test'"], capture_output=True)
     assert denied.returncode != 0
     assert not os.path.exists(f"{home}/beastron-sandbox-test")
+
+
+def test_the_usage_limit_stops_the_suite_and_is_not_recorded(tmp_path, claude, monkeypatch):
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("FAKE_CLAUDE_MODE", "limit")
+    task = make_task(tmp_path)
+    run_dir = tmp_path / "run"
+    with pytest.raises(reference.LimitReached, match="5-hour limit"):
+        reference.run_reference_suite([task], claude=str(claude[0]), repeats=2, run_dir=run_dir, use_sandbox=False)
+    assert not (run_dir / "results.jsonl").exists()
+
+
+def test_a_stopped_run_continues_where_it_left_off(tmp_path, claude, monkeypatch):
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("FAKE_CLAUDE_MODE", "pass")
+    task = make_task(tmp_path)
+    run_dir = tmp_path / "run"
+    reference.run_reference_suite([task], claude=str(claude[0]), repeats=1, run_dir=run_dir, use_sandbox=False)
+    _, results = reference.run_reference_suite([task], claude=str(claude[0]), repeats=3, run_dir=run_dir, use_sandbox=False)
+    assert [r.repeat for r in results] == [2, 3]
+    assert [l["repeat"] for l in lines(run_dir)] == [1, 2, 3]
+
+
+def test_a_resumed_run_reports_all_its_results(tmp_path, claude, monkeypatch):
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("FAKE_CLAUDE_MODE", "pass")
+    task = make_task(tmp_path)
+    run_dir = tmp_path / "state" / "evals" / "runs" / "20260101T000000Z_abc123"
+    reference.run_reference_suite([task], claude=str(claude[0]), repeats=1, run_dir=run_dir, use_sandbox=False)
+    out = CliRunner().invoke(cli.app, ["eval", "reference", "--tasks-dir", str(task.dir.parent), "-n", "3", "--resume", str(run_dir),
+                                       "--claude", str(claude[0]), "--unsafe-no-sandbox", "--results-dir", str(tmp_path / "results"),
+                                       "--baselines-dir", str(tmp_path / "baselines")])
+    assert out.exit_code == 0, out.output
+    assert "3/3 runs passed" in out.output
