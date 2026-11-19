@@ -1,0 +1,34 @@
+prompt = "The fix for the NullPointerException on an empty cart was committed on main. Bring that fix, and only that fix, to the release/1.4 branch. Leave main as it is."
+category = "git"
+language = "java"
+source = "synthetic"
+timeout = 600
+tags = ["full"]
+
+[workspace]
+setup = "setup.sh"
+
+[[checks]]
+type = "command"
+run = "test -z \"$(git status --porcelain)\""
+
+[[checks]]
+type = "command"
+run = "test $(git rev-list --count main) -eq 4 && git log -1 --format=%s main | grep -q 'Add loyalty points'"
+
+[[checks]]
+type = "command"
+run = "test $(git rev-list --count release/1.4) -eq 2"
+
+[[checks]]
+type = "command"
+run = "git show release/1.4:src/test/java/com/example/CartTest.java | grep -q emptyCart"
+
+[[checks]]
+type = "command"
+run = "! git cat-file -e release/1.4:src/main/java/com/example/GiftCard.java 2>/dev/null && ! git cat-file -e release/1.4:src/main/java/com/example/Loyalty.java 2>/dev/null"
+
+[[checks]]
+type = "command"
+run = "d=$(mktemp -d) && git worktree add -q --detach \"$d\" release/1.4 && (cd \"$d\" && mvn -o -q test); s=$?; git worktree remove --force \"$d\"; exit $s"
+timeout = 300

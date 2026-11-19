@@ -1,0 +1,28 @@
+# Replays https://github.com/baokhang83/mnemo-warmup/commit/dcc3c7ceb07cc728c9a3ee427bbf003d24a6d2c6
+# Only the public commit is referenced; no code from the repository is stored here.
+prompt = "Select ECR workload identity login from the pod environment.\n\nThe tests in warmup-core/src/test/java/io/github/baokhang83/mnemo/warmup/core/AwsRegistryAuthTest.java describe what's expected. Make them pass without changing them. Check with: mvn -o -q -pl warmup-core -am test -Dtest=AwsRegistryAuthTest -Dsurefire.failIfNoSpecifiedTests=false"
+category = "feature"
+language = "java"
+source = "commit-replay"
+timeout = 1200
+tags = ["replay"]
+
+[workspace]
+url = "https://github.com/baokhang83/mnemo-warmup"
+commit = "dcc3c7ceb07cc728c9a3ee427bbf003d24a6d2c6"
+repo = "~/Documents/mnemo-warmup"
+tests = ["warmup-core/src/test/java/io/github/baokhang83/mnemo/warmup/core/AwsRegistryAuthTest.java"]
+license = "Apache-2.0"
+
+[[checks]]
+type = "command"
+run = "mvn -o -q -pl warmup-core -am test -Dtest=AwsRegistryAuthTest -Dsurefire.failIfNoSpecifiedTests=false"
+timeout = 900
+
+[[checks]]
+type = "unchanged"
+paths = ["warmup-core/src/test/java/io/github/baokhang83/mnemo/warmup/core/AwsRegistryAuthTest.java"]
+
+[[checks]]
+type = "only_changed"
+paths = ["warmup-cli/src/main/java/io/github/baokhang83/mnemo/warmup/cli/Main.java", "warmup-core/src/main/java/io/github/baokhang83/mnemo/warmup/core/AwsRegistryAuth.java"]

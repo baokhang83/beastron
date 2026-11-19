@@ -1,0 +1,40 @@
+prompt = "Remove the deprecated --legacy-mode option everywhere: the code, its tests and the README. Then run the tests with: mvn -o -q test"
+category = "remove"
+language = "java"
+source = "synthetic"
+timeout = 600
+tags = ["full", "quick"]
+
+[[checks]]
+type = "not_contains"
+path = "src/main/java/com/example/Cli.java"
+text = "legacy"
+regex = true
+
+[[checks]]
+type = "not_contains"
+path = "src/main/java/com/example/Report.java"
+text = "legacy"
+regex = true
+
+[[checks]]
+type = "not_contains"
+path = "src/test/java/com/example/ReportTest.java"
+text = "legacy"
+regex = true
+
+[[checks]]
+type = "not_contains"
+path = "README.md"
+text = "legacy"
+regex = true
+
+[[checks]]
+type = "command"
+run = "mvn -o -q test"
+timeout = 300
+
+[[checks]]
+type = "contains"
+path = "src/test/java/com/example/ReportTest.java"
+text = "void formatsTheReport()"

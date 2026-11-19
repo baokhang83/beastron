@@ -1,0 +1,28 @@
+# Replays https://github.com/baokhang83/blastradius/commit/ea6cd1ff3cfea1b4a82dd8860db61d9ec720c149
+# Only the public commit is referenced; no code from the repository is stored here.
+prompt = "Support Java 17 tracking targets.\n\nThe tests in blastradius-core/src/test/java/io/github/baokhang83/blastradius/core/tracking/Java17AgentCompatibilityTest.java describe what's expected. Make them pass without changing them. Check with: mvn -o -q -pl blastradius-core -am test -Dtest=Java17AgentCompatibilityTest -Dsurefire.failIfNoSpecifiedTests=false"
+category = "feature"
+language = "java"
+source = "commit-replay"
+timeout = 1200
+tags = ["replay"]
+
+[workspace]
+url = "https://github.com/baokhang83/blastradius"
+commit = "ea6cd1ff3cfea1b4a82dd8860db61d9ec720c149"
+repo = "~/Documents/blastradius"
+tests = ["blastradius-core/src/test/java/io/github/baokhang83/blastradius/core/tracking/Java17AgentCompatibilityTest.java"]
+license = "Apache-2.0"
+
+[[checks]]
+type = "command"
+run = "mvn -o -q -pl blastradius-core -am test -Dtest=Java17AgentCompatibilityTest -Dsurefire.failIfNoSpecifiedTests=false"
+timeout = 900
+
+[[checks]]
+type = "unchanged"
+paths = ["blastradius-core/src/test/java/io/github/baokhang83/blastradius/core/tracking/Java17AgentCompatibilityTest.java"]
+
+[[checks]]
+type = "only_changed"
+paths = [".fluencyloop/state.json", "blastradius-core/pom.xml", "docs/fluencyloop/features/support-java-17-target-test-jvms-with-a-compatible-tracking/design.md", "docs/fluencyloop/features/support-java-17-target-test-jvms-with-a-compatible-tracking/sessions/compile-the-injected-tracking-agent-for-java-17-while-retain.md"]
