@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import random
+import re
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated
 
@@ -30,20 +32,46 @@ usecases_app = typer.Typer(
 def scan(
     claude: Annotated[bool, typer.Option(help="Read Claude Code's session logs.")] = True,
     codex: Annotated[bool, typer.Option(help="Read Codex's session logs.")] = True,
+    since: Annotated[str | None, typer.Option(help="Only requests from this period: 90d, 12w, or a date (2026-06-01).")] = None,
 ) -> None:
     """Read the session logs into ~/.local/state/firox/usecases/ (counts only are printed)."""
     console = Console(highlight=False)
+    try:
+        cutoff = parse_since(since) if since else None
+    except ValueError as e:
+        console.print(f"[red]{escape(str(e))}[/]")
+        raise typer.Exit(1) from None
     sources = [("Claude Code", "claude", claude_logs.read_all, claude), ("Codex", "codex", codex_logs.read_all, codex)]
     for label, name, read, enabled in sources:
         if not enabled:
             continue
         requests = read()
+        if cutoff:
+            requests = [r for r in requests if r.timestamp and _when(r.timestamp) >= cutoff]
         path = save(requests, name)
         s = stats(requests)
         console.print(f"{label}: {s['requests']} requests in {s['sessions']} sessions across {s['projects']} "
                       f"projects ({s['commands']} slash commands, {s['corrected']} immediately corrected)")
         console.print(f"[dim]  most used tools: {', '.join(f'{k} {v}' for k, v in s['top_tools'].items()) or 'none'}[/]")
         console.print(f"[dim]  saved locally (owner-only): {path}[/]")
+
+
+def parse_since(value: str) -> datetime:
+    """"90d", "12w" or "2026-06-01" -> the earliest time to keep (UTC)."""
+    now = datetime.now(timezone.utc)
+    match = re.fullmatch(r"(\d+)([dw])", value.strip())
+    if match:
+        days = int(match.group(1)) * (7 if match.group(2) == "w" else 1)
+        return now - timedelta(days=days)
+    try:
+        return datetime.fromisoformat(value.strip()).replace(tzinfo=timezone.utc)
+    except ValueError:
+        raise ValueError(f"--since {value!r}: use a number of days or weeks (90d, 12w) or a date (2026-06-01)") from None
+
+
+def _when(timestamp: str) -> datetime:
+    when = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
 
 
 def _load_scanned(console: Console) -> list:

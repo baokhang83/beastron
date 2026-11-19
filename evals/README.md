@@ -99,6 +99,11 @@ Compared with the baseline, the report flags:
 
 The score weights categories by their share of real usage, so fix tasks (many, because commit replays are mostly fixes) count for less than explain or feature tasks.
 
+**Adjusting and refitting:**
+- `evals/weights.toml` holds your own adjustments to the measured weights (`[multiply]` a category, or `[set]` its share). firox never overwrites it.
+- `firox eval coverage` compares the tasks per category and language with the weights and says what to add.
+- [docs/refitting.md](../docs/refitting.md) is the full procedure for refitting the suite when your work changes or a new technology comes in. In Claude Code, `/refit` runs it.
+
 **Where the tasks come from** (`tags`):
 - `seed` (8): synthetic tasks for the failure types seen while building firox (see below)
 - `replay` (13): commits from the owner's public repositories (blastradius, mnemo-jvm-warden, blastradius-cache-warmer, mnemo-warmup), replayed from their parent with their tests in place
