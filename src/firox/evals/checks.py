@@ -169,13 +169,20 @@ def _compile(i: int, kind: str, pattern: str) -> re.Pattern[str]:
 # ----- snapshots --------------------------------------------------------------
 
 def snapshot(root: Path) -> Snapshot:
-    """Content hashes of the workspace's files, skipping .git and generated folders (caches, builds)."""
+    """Content hashes of the workspace's files, skipping .git, generated folders (caches, builds),
+    and, in a git workspace, everything git ignores (e.g. build output such as dependency-reduced-pom.xml)."""
     result: Snapshot = {}
+    ignored_files, ignored_dirs = _git_ignored(root)
     for dirpath, dirnames, filenames in os.walk(root):
+        rel_dir = Path(dirpath).relative_to(root).as_posix()
+        prefix = "" if rel_dir == "." else rel_dir + "/"
         # skip ignored folders without walking into them (.git can be huge)
-        dirnames[:] = [d for d in dirnames if d not in IGNORED_DIRS and not d.endswith(".egg-info")]
+        dirnames[:] = [
+            d for d in dirnames
+            if d not in IGNORED_DIRS and not d.endswith(".egg-info") and prefix + d + "/" not in ignored_dirs
+        ]
         for name in filenames:
-            if name in IGNORED_DIRS:
+            if name in IGNORED_DIRS or prefix + name in ignored_files:
                 continue
             path = Path(dirpath) / name
             rel = path.relative_to(root).as_posix()
@@ -184,6 +191,24 @@ def snapshot(root: Path) -> Snapshot:
             elif path.is_file():
                 result[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
     return dict(sorted(result.items()))
+
+
+def _git_ignored(root: Path) -> tuple[set[str], set[str]]:
+    """Paths git ignores in the workspace: (files, folders ending in "/"). Empty outside git."""
+    if not (root / ".git").exists():
+        return set(), set()
+    try:
+        proc = subprocess.run(
+            ["git", "-c", "core.fsmonitor=false", "-C", str(root), "ls-files", "--others", "--ignored",
+             "--exclude-standard", "--directory", "-z"],
+            capture_output=True, timeout=60,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return set(), set()
+    if proc.returncode != 0:
+        return set(), set()
+    paths = [p.decode(errors="replace") for p in proc.stdout.split(b"\0") if p]
+    return {p for p in paths if not p.endswith("/")}, {p for p in paths if p.endswith("/")}
 
 
 def changed_paths(before: Snapshot, after: Snapshot) -> list[str]:
