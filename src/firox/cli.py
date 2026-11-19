@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+from typer.core import TyperGroup
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.formatted_text import HTML
@@ -14,6 +15,7 @@ from prompt_toolkit.history import FileHistory
 from .agent import Agent
 from .client import OpenAICompatClient
 from .config import Config, ConfigError, load_config
+from .evals.commands import eval_app
 from .tools import Workspace, make_tools
 from .trace import SessionTrace, fan_out, model_digest
 from .ui import RichUI, fmt_tokens
@@ -30,7 +32,32 @@ COMMANDS = {
 
 HISTORY_FILE = Path("~/.config/firox/history").expanduser()
 
-app = typer.Typer(add_completion=False, rich_markup_mode="rich")
+DEFAULT_COMMAND = "chat"
+
+
+class DefaultToChat(TyperGroup):
+    """A command group where anything that isn't a subcommand goes to `chat`.
+
+    So `firox`, `firox "fix the test"` and `firox -m fast "..."` keep working
+    as before, while `firox eval ...` reaches the eval commands. A task that is
+    literally a subcommand's name can be passed as `firox chat eval`.
+    """
+
+    def parse_args(self, ctx, args):
+        if not args or (args[0] not in self.commands and args[0] not in ("--help", "-h")):
+            args = [DEFAULT_COMMAND, *args]
+        return super().parse_args(ctx, args)
+
+
+app = typer.Typer(
+    cls=DefaultToChat,
+    add_completion=False,
+    rich_markup_mode="rich",
+    context_settings={"help_option_names": ["--help", "-h"]},
+    help="firox: a coding agent for local and open-weight models.\n\n"
+    "Run `firox` for an interactive session, or `firox \"a task\"` to run one task.",
+)
+app.add_typer(eval_app)
 
 
 class SlashCompleter(Completer):
@@ -42,7 +69,7 @@ class SlashCompleter(Completer):
                     yield Completion(cmd, start_position=-len(text), display_meta=help_text)
 
 
-@app.command()
+@app.command(DEFAULT_COMMAND)
 def main(
     task: Annotated[str | None, typer.Argument(help="Run this one task and exit. Omit for interactive mode.")] = None,
     model: Annotated[str | None, typer.Option("--model", "-m", help="Model profile from models.toml.")] = None,
@@ -56,7 +83,7 @@ def main(
         bool, typer.Option("--trace/--no-trace", help="Record the session in ~/.local/state/firox/sessions/.")
     ] = True,
 ) -> None:
-    """firox: a coding agent for local and open-weight models."""
+    """Interactive session, or one task (the default: `firox` and `firox "task"` run this)."""
     ui = RichUI(verbose=verbose)
     try:
         cfg = load_config(config)

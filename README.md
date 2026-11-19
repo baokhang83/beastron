@@ -78,6 +78,7 @@ firox "fix the failing test"           # one task, then exit
 firox -m qwen3-8b-fast                 # pick a model profile
 firox -v                               # show reasoning and full tool output
 firox --no-trace                       # don't record the session
+firox eval --help                      # eval commands (being built: see the M0 milestone)
 ```
 
 Use `firox`, not `uv run firox`: inside another project, `uv run` sets up that
