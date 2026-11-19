@@ -39,6 +39,7 @@ Details in [docs/plan.md § Current status](docs/plan.md#7-current-status-and-kn
   - A failed edit shows the model the closest matching text from the file.
   - Invalid tool calls go back to the model as errors instead of crashing.
   - A task stops after 25 model calls.
+- **Session traces:** every session is recorded in `~/.local/state/firox/sessions/` as one JSONL file: what you asked, each tool call with its full output, the change record, tokens and timing, the exact model file (its digest) and the project's git state at the start. Traces stay on your machine; `--no-trace` turns them off.
 - **Any model:** profiles in `models.toml`; switch with `-m` or `/model` during a session.
 
 Not there yet, and planned: automated evals and a score, undo, summarizing long conversations, automatic test runs, adapting the tools to the model's strength. See the [roadmap](docs/plan.md#6-roadmap).
@@ -76,6 +77,7 @@ firox                                  # interactive session
 firox "fix the failing test"           # one task, then exit
 firox -m qwen3-8b-fast                 # pick a model profile
 firox -v                               # show reasoning and full tool output
+firox --no-trace                       # don't record the session
 ```
 
 Use `firox`, not `uv run firox`: inside another project, `uv run` sets up that
