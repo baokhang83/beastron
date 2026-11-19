@@ -1,5 +1,5 @@
 <div align="center" style="margin-bottom:-40px;">
-  <img width="300" height="300" alt="beastron_avatar_light" src="https://github.com/user-attachments/assets/a16c555e-46ff-442b-b040-fe3438d865fd" />
+  <img width="300" height="262" alt="beastron_avatar_light" src="https://github.com/user-attachments/assets/a16c555e-46ff-442b-b040-fe3438d865fd" />
   <h1>Beastron</h1>
 </div>
 
