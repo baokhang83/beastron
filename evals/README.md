@@ -79,7 +79,9 @@ Compared with the baseline, the report flags:
 - **a changed model file** (digest), so a model update can't hide inside a score change
 - improvements, and tasks added or removed
 
-`firox eval run` and `firox eval report` exit with status 1 when there is a regression. Until use-case weights exist (milestone M1), the score is the plain average of the category pass rates.
+`firox eval run` and `firox eval report` exit with status 1 when there is a regression.
+
+**The score is usage-weighted:** each category's pass rate counts as much as that kind of task occurs in the owner's real work, per `evals/usecases.json` (see [usecases.md](usecases.md), produced by `firox usecases scan` and `firox usecases classify --write`). Categories without a weight fall back to equal weights; the report says which was used.
 
 ## Seed suite
 
