@@ -3,3 +3,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .DS_Store
+
+# Claude Code: commit the project skills, not local runtime files
+.claude/*
+!.claude/skills/
