@@ -16,6 +16,7 @@ from .agent import Agent
 from .client import OpenAICompatClient
 from .config import Config, ConfigError, load_config
 from .evals.commands import eval_app
+from .usecases.commands import usecases_app
 from .tools import Workspace, make_tools
 from .trace import SessionTrace, fan_out, model_digest
 from .ui import RichUI, fmt_tokens
@@ -58,6 +59,7 @@ app = typer.Typer(
     "Run `firox` for an interactive session, or `firox \"a task\"` to run one task.",
 )
 app.add_typer(eval_app)
+app.add_typer(usecases_app)
 
 
 class SlashCompleter(Completer):
