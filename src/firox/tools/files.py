@@ -62,6 +62,34 @@ def _count_changes(diff: str) -> tuple[int, int]:
     return added, removed
 
 
+def _closest_match(content: str, old_text: str, min_ratio: float = 0.6) -> tuple[int, int, str] | None:
+    """Find the block of lines in `content` that looks most like `old_text`.
+
+    Returns (first_line, last_line, text) or None. Used to show the model what
+    the file really says when its old_text doesn't match exactly, which is far
+    more useful to a small model than "not found".
+    """
+    file_lines = content.splitlines()
+    want = old_text.strip("\n").splitlines()
+    if not want or not file_lines:
+        return None
+    n = min(len(want), len(file_lines))
+    target = "\n".join(line.strip() for line in want)
+    matcher = difflib.SequenceMatcher(autojunk=False)
+    matcher.set_seq2(target)
+    best_ratio, best_start = 0.0, 0
+    for start in range(len(file_lines) - n + 1):
+        matcher.set_seq1("\n".join(line.strip() for line in file_lines[start : start + n]))
+        if matcher.real_quick_ratio() <= best_ratio or matcher.quick_ratio() <= best_ratio:
+            continue
+        ratio = matcher.ratio()
+        if ratio > best_ratio:
+            best_ratio, best_start = ratio, start
+    if best_ratio < min_ratio:
+        return None
+    return best_start + 1, best_start + n, "\n".join(file_lines[best_start : best_start + n])
+
+
 def make_file_tools(ws: Workspace) -> list[Tool]:
     def list_files(args: Args) -> ToolResult:
         base = ws.resolve(args.get("path") or ".")
@@ -160,10 +188,20 @@ def make_file_tools(ws: Workspace) -> list[Tool]:
         content = _read_text(ws, path)
         count = content.count(old_text)
         if count == 0:
-            raise ToolError(
+            message = (
                 f"old_text was not found in {ws.rel(path)}. It must match the file exactly, "
-                "including indentation and whitespace. Read the file again and copy the text exactly."
+                "including indentation and whitespace."
             )
+            match = _closest_match(content, old_text)
+            if match:
+                first, last, text = match
+                message += (
+                    f" The closest text in the file is lines {first}-{last}:\n{text}\n"
+                    "If this is what you meant, copy it exactly as old_text."
+                )
+            else:
+                message += " Read the file again and copy the text exactly."
+            raise ToolError(message)
         if count > 1:
             raise ToolError(
                 f"old_text appears {count} times in {ws.rel(path)}. "
