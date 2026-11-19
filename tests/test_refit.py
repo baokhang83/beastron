@@ -5,10 +5,10 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from typer.testing import CliRunner
 
-from firox.cli import app
-from firox.evals.report import apply_overrides, load_overrides, load_weights
-from firox.usecases.commands import parse_since
-from firox.usecases.requests import load
+from beastron.cli import app
+from beastron.evals.report import apply_overrides, load_overrides, load_weights
+from beastron.usecases.commands import parse_since
+from beastron.usecases.requests import load
 
 MEASURED = {"explain": 0.5, "fix": 0.3, "git": 0.2}
 
@@ -77,8 +77,8 @@ def test_since(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="number of days or weeks"):
         parse_since("soon")
 
-    monkeypatch.setenv("FIROX_STATE_DIR", str(tmp_path / "state"))
-    monkeypatch.setenv("FIROX_CODEX_DIR", str(tmp_path / "none"))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("BEASTRON_CODEX_DIR", str(tmp_path / "none"))
     root = tmp_path / "claude"
     (root / "-work").mkdir(parents=True)
     recent = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat().replace("+00:00", "Z")
@@ -86,7 +86,7 @@ def test_since(tmp_path, monkeypatch):
     (root / "-work" / "s.jsonl").write_text(
         f'{{"type": "user", "message": {{"content": "old request"}}, "timestamp": "{old}"}}\n'
         f'{{"type": "user", "message": {{"content": "recent request"}}, "timestamp": "{recent}"}}\n')
-    monkeypatch.setenv("FIROX_CLAUDE_DIR", str(root))
+    monkeypatch.setenv("BEASTRON_CLAUDE_DIR", str(root))
     result = CliRunner().invoke(app, ["usecases", "scan", "--since", "30d"])
     assert result.exit_code == 0, result.output
     assert [r.text for r in load(tmp_path / "state" / "usecases" / "claude.jsonl")] == ["recent request"]

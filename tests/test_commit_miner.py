@@ -7,10 +7,10 @@ import tomllib
 import pytest
 from typer.testing import CliRunner
 
-import firox.usecases.commits as commits
-from firox.cli import app
-from firox.evals.task import load_task
-from firox.evals.verify import verify
+import beastron.usecases.commits as commits
+from beastron.cli import app
+from beastron.evals.task import load_task
+from beastron.evals.verify import verify
 
 GIT_ENV = {
     **os.environ,
@@ -87,7 +87,7 @@ def test_repositories_off_github_or_excluded_are_refused(repo, public, tmp_path,
         commits.repo_info(repo)
     exclude = tmp_path / "exclude.txt"
     exclude.write_text(f"{repo}\n")
-    monkeypatch.setenv("FIROX_EXCLUDE", str(exclude))
+    monkeypatch.setenv("BEASTRON_EXCLUDE", str(exclude))
     with pytest.raises(commits.MinerError, match="exclusion list"):
         commits.repo_info(repo)
 

@@ -7,9 +7,9 @@ the start, the way the runner creates a new model client per run.
 
 import json
 
-from firox.client import ModelReply, OpenAICompatClient
-from firox.config import ModelProfile
-from firox.quirks import ToolCall
+from beastron.client import ModelReply, OpenAICompatClient
+from beastron.config import ModelProfile
+from beastron.quirks import ToolCall
 
 PROFILE = ModelProfile(name="scripted", base_url="http://unused.invalid/v1", model="scripted-model", context=32768)
 

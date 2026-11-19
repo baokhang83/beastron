@@ -10,7 +10,7 @@ setup = "setup.sh"
 
 [[checks]]
 type = "answer_mentions"
-patterns = ["a6020b4", "discount|total\\(\\)|totals\\.py"]
+patterns = ["656d88f", "discount|total\\(\\)|totals\\.py"]
 
 [[checks]]
 type = "no_changes"

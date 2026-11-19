@@ -3,8 +3,8 @@ import json
 import pytest
 from typer.testing import CliRunner
 
-from firox.cli import app
-from firox.evals.report import (
+from beastron.cli import app
+from beastron.evals.report import (
     compare,
     history,
     load_baseline,
@@ -20,7 +20,7 @@ def result(task, passed, *, category="fix", seconds=10.0, reason=None, digest="d
     return {
         "task": task, "category": category, "profile": profile, "model": "qwen3:8b", "passed": passed,
         "reason": reason or ("done" if passed else "done"), "seconds": seconds, "nudges": 1, "tool_errors": 0,
-        "model_digest": digest, "firox_commit": commit, "sandboxed": True,
+        "model_digest": digest, "beastron_commit": commit, "sandboxed": True,
     }
 
 
@@ -47,7 +47,7 @@ def test_summary_per_task_category_and_totals():
     assert (t["runs"], t["passed"]) == (9, 5)
     assert t["score"] == pytest.approx((1 / 3 + 1.0) / 2, abs=1e-4)  # plain average of the categories
     assert (t["median_seconds"], t["p90_seconds"]) == (20.0, 30.0)
-    assert s["model_digests"] == ["d1"] and s["firox_commit"] == "abc1234def"
+    assert s["model_digests"] == ["d1"] and s["beastron_commit"] == "abc1234def"
 
 
 def test_timeouts_and_errors_are_counted():
@@ -133,7 +133,7 @@ def write_run(state, name, results):
 
 def test_baseline_then_report_flags_a_regression(tmp_path, monkeypatch):
     state = tmp_path / "state"
-    monkeypatch.setenv("FIROX_STATE_DIR", str(state))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(state))
     baselines, results = tmp_path / "baselines", tmp_path / "results"
     write_run(state, "20261118T010000Z_aaaaaa", runs("fix-a", "PPP") + runs("fix-b", "PPP"))
     cli = CliRunner()
@@ -162,7 +162,7 @@ def test_report_history(tmp_path):
 
 def test_latest_run_is_the_one_written_last_even_within_the_same_second(tmp_path):
     import os
-    from firox.evals.report import latest_run
+    from beastron.evals.report import latest_run
     older = write_run(tmp_path, "20261119T010000Z_zzzzzz", [])  # sorts last by name ...
     newer = write_run(tmp_path, "20261119T010000Z_aaaaaa", [])  # ... but was written later
     os.utime(older / "results.jsonl", ns=(1_000_000_000, 1_000_000_000))

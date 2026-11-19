@@ -21,7 +21,7 @@ KNOWN_QUIRKS = {
 
 CONFIG_LOCATIONS = (
     Path("models.toml"),
-    Path("~/.config/firox/models.toml").expanduser(),
+    Path("~/.config/beastron/models.toml").expanduser(),
 )
 
 
@@ -73,7 +73,7 @@ def find_config(explicit: Path | None = None) -> Path:
         if not explicit.is_file():
             raise ConfigError(f"Config file not found: {explicit}")
         return explicit
-    env = os.environ.get("FIROX_CONFIG")
+    env = os.environ.get("BEASTRON_CONFIG")
     candidates = [Path(env)] if env else []
     candidates += list(CONFIG_LOCATIONS)
     for path in candidates:

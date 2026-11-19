@@ -1,11 +1,11 @@
 """Run eval tasks headless and record one result per run.
 
 For each task x model profile x repeat:
-1. create a fresh workspace (firox.evals.workspace) and snapshot its files
+1. create a fresh workspace (beastron.evals.workspace) and snapshot its files
 2. run the agent on the task's prompt, approving every action automatically,
-   with every shell command inside the sandbox (firox.evals.sandbox)
+   with every shell command inside the sandbox (beastron.evals.sandbox)
 3. enforce the task's time limit (wall clock) and step limit
-4. evaluate the task's checks (firox.evals.checks)
+4. evaluate the task's checks (beastron.evals.checks)
 5. append one JSON line to the run's results file, even when the model errors
 
 Results and session traces go to `<state>/evals/runs/<run id>/`:
@@ -31,7 +31,7 @@ from ..client import ModelClient, OpenAICompatClient
 from ..config import ModelProfile
 from ..events import ErrorEvent, Event, Nudge, ToolEnd, TurnEnd
 from ..tools import Workspace, make_tools
-from ..trace import SessionTrace, fan_out, firox_version, model_digest, state_dir
+from ..trace import SessionTrace, fan_out, beastron_version, model_digest, state_dir
 from . import sandbox
 from .checks import Context, evaluate, snapshot
 from .task import Task
@@ -62,7 +62,7 @@ class RunResult:
     shell_commands: int = 0
     error: str | None = None
     model_digest: str | None = None
-    firox_commit: str | None = None
+    beastron_commit: str | None = None
     sandboxed: bool = True
     trace: str | None = None
     started_at: str = ""
@@ -135,7 +135,7 @@ def run_task(
     result = RunResult(
         task=task.id, category=task.category, profile=profile.name, model=profile.model,
         repeat=repeat, passed=False, reason="setup_failed", sandboxed=use_sandbox,
-        model_digest=model_digest(profile), firox_commit=firox_version().get("commit"),
+        model_digest=model_digest(profile), beastron_commit=beastron_version().get("commit"),
         started_at=datetime.now(timezone.utc).isoformat(),
     )
     try:
@@ -203,7 +203,7 @@ def run_suite(
         "tasks": [t.id for t in tasks],
         "profiles": [p.name for p in profiles],
         "repeats": repeats,
-        "firox": firox_version(),
+        "beastron": beastron_version(),
         "sandboxed": kwargs.get("use_sandbox", True),
     })
     results = []

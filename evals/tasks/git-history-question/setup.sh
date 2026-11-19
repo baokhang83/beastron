@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds the history the task asks about. Fixed identities and dates (set by firox) make the commit ids reproducible.
+# Builds the history the task asks about. Fixed identities and dates (set by beastron) make the commit ids reproducible.
 set -e
 git init -q -b main
 git add -A

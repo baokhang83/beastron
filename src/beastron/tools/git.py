@@ -35,7 +35,7 @@ SAFE_CONFIG = [
     "-c", "core.pager=cat",
     "-c", "color.ui=false",
 ]
-_SAFE_CONFIG = SAFE_CONFIG  # also used by eval workspaces (firox.evals.workspace)
+_SAFE_CONFIG = SAFE_CONFIG  # also used by eval workspaces (beastron.evals.workspace)
 
 
 def run_git(ws: Workspace, args: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
