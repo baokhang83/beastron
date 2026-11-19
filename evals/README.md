@@ -44,3 +44,20 @@ Each `[[checks]]` entry decides part of the result; a run passes only when all o
 | `answer_mentions` | `patterns` | the final answer matches every regex, ignoring case |
 
 "Before the run" means a snapshot of content hashes taken when the workspace is ready. `.git` and generated folders (caches, `build`, `target`, `node_modules`, …) are left out, so running tests doesn't count as a change. A failed check gives a reason that names the file or the missing fact, e.g. `pyproject.toml still contains 'x-handles'`.
+
+## Running
+
+```bash
+firox eval run                          # every task, the default model profile, 3 repeats
+firox eval run -s quick -n 1            # one suite (tag), one repeat
+firox eval run -t fix-chunk -m qwen3-8b-fast,qwen3-8b-local
+firox eval run --keep -v                # keep the workspaces and watch the agent work
+```
+
+Each run gets a fresh workspace. Every action is **approved automatically**, so every shell command the model writes runs inside a macOS sandbox (`sandbox-exec`) that only allows writes inside the run's own folder, the system temp folders, and the build caches `~/.m2`, `~/.gradle` and `~/.cache`. Reading and network access stay allowed. On other systems firox refuses to run evals unless you pass `--unsafe-no-sandbox`.
+
+The task's `timeout` (wall clock) and `max_steps` are enforced. A timeout counts as a failure. Ctrl-C stops the suite; finished runs are kept.
+
+Results go to `~/.local/state/firox/evals/runs/<run id>/`:
+- `results.jsonl`: one line per run, with pass/fail, each check's reason, how the turn ended, steps, tokens, time, nudges, tool errors, the change record, the model digest and firox's commit
+- `traces/`: the session trace of every run
