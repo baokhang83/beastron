@@ -8,7 +8,7 @@
 <b>How close can a free, local coding agent get to a hosted one on real work?</b>
 
 <p>
-Beastron is an <b>experimental</b> coding agent for local open-weight models, built to answer that question. It runs entirely on your own machine: no subscription, no per-token cost, and no code sent anywhere. It works with any OpenAI-compatible model server (Ollama, LM Studio, llama.cpp, vLLM). It is also a measurement project. Beastron is compared with Claude Code on the same tasks, drawn from real development work, and the gap is closed one measured change at a time. The target is to complete at least 80% as many of those tasks as Claude Code does. The full plan, the process and the roadmap are in [docs/plan.md](docs/plan.md).
+Beastron is an <b>experimental</b> coding agent for local open-weight models, built to answer that question. It runs entirely on your own machine: no subscription, no per-token cost, and no code sent anywhere. It works with any OpenAI-compatible model server (Ollama, LM Studio, llama.cpp, vLLM). It is also a measurement project. Beastron is compared with Claude Code on the same tasks, drawn from real development work, and the gap is closed one measured change at a time. The target is to complete at least 80% as many of those tasks as Claude Code does. The full plan, the process and the roadmap are in <a href="https://github.com/baokhang83/beastron/blob/main/docs/plan.md">docs/plan.md</a>.
 </p>
 
 <a href="https://github.com/baokhang83/mnemo-warmup/actions/workflows/build.yml"><img alt="build" src="https://github.com/baokhang83/mnemo-warmup/actions/workflows/build.yml/badge.svg"></a>
