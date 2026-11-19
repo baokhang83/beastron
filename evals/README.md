@@ -110,3 +110,17 @@ CI has no GPU and no model server, so it tests the harness with a **scripted mod
 - `firox eval run`, `baseline` and `report` work end to end, including exit code 1 on a regression
 
 Real model runs happen on the reference machine.
+
+## Commit-replay tasks
+
+Tasks taken from real commits in the owner's **public** repositories:
+
+```bash
+firox eval propose --repo ~/Documents/blastradius            # candidates, writes nothing
+firox eval add --repo ~/Documents/blastradius --commit 398e105
+```
+
+- **A candidate** is a small commit (default: at most 3 files and 150 changed lines) that changes source code *and* tests. The repository's first commit is never one, since it has no parent.
+- **The workspace** is the repository at the commit's parent, with the commit's tests put in place. The task: make those tests pass without changing them. The checks: run those tests (offline for Maven), keep them unchanged, and change nothing outside the files the commit changed.
+- **`add` drafts the task** from the commit message, then **verifies** it: the checks must fail on the parent commit and pass on the real commit. It shows the draft and writes it only after you approve.
+- **Only public commits are referenced:** the repository's URL and the commit hash. No code is copied into firox. A repository must be public on GitHub (checked with `gh`) and have a license, which is recorded in the task. Repositories on the exclusion list are refused. If the local clone (`repo`) is missing, the workspace is cloned from `url`.
