@@ -49,6 +49,25 @@ Firox looks for `models.toml` in this order: the `--config` option, the
 Commands inside a session: `/help`, `/models`, `/model NAME`, `/clear`,
 `/context`, `/verbose`, `/quit`. Ctrl-C stops the agent; Ctrl-D quits.
 
+### Project briefing
+
+When a session starts (and after `/clear`), firox reads the project's
+documentation and gives it to the model, so the model knows what the project
+is before its first step:
+
+1. It starts from `AGENTS.md`, else `README.md`, else the most likely looking
+   other `.md` file.
+2. It reads that file fully, then the Markdown files it links to, two levels
+   deep. Informative names (overview, architecture, manifesto, ...) go first;
+   files like CHANGELOG, LICENSE or CODE_OF_CONDUCT are skipped.
+3. It stops at about 20% of the model's context. Linked files that didn't fit
+   are listed by name for the model.
+
+The header shows what was read:
+`briefing: README.md, MANIFESTO.md, CONTRIBUTING.md · 6.5K tokens`. The first
+answer takes longer to start because the model reads the briefing first.
+`--no-briefing` turns it off.
+
 ## Models
 
 Profiles live in `models.toml`. Each one is a server URL, a model name and a
