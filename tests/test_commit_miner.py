@@ -174,3 +174,13 @@ def test_add_refuses_a_task_that_does_not_separate_work(repo, public, tmp_path):
     result = CliRunner().invoke(app, ["eval", "add", "--repo", str(repo), "--commit", sha, "--tasks-dir", str(tasks), "--yes"])
     assert result.exit_code == 1 and "doesn't separate failing from passing work" in result.output
     assert list(tasks.iterdir()) == []
+
+
+def test_a_renamed_test_file_gets_its_real_new_path(repo):
+    git(repo, "mv", "tests/test_cart.py", "tests/test_totals.py")
+    sha = commit(repo, "fix: rename the cart tests and round totals", {
+        "cart.py": "def total(prices, discount=0):\n    return round(sum(prices) * (100 - discount) / 100)\n",
+    })
+    [candidate] = [c for c in commits.candidates(repo) if c.sha == sha]
+    assert candidate.tests == ["tests/test_totals.py"]  # not "tests/{test_cart.py => test_totals.py}"
+    assert "tests/test_cart.py" in candidate.deleted

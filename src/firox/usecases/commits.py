@@ -47,10 +47,12 @@ class Candidate:
     subject: str
     body: str
     files: list[tuple[str, int, int]] = field(default_factory=list)  # (path, added, removed)
+    deleted: set[str] = field(default_factory=set)  # files the commit deleted
 
     @property
     def tests(self) -> list[str]:
-        return [p for p, _, _ in self.files if TEST_PATH.search(p)]
+        """Test files that exist after the commit: the ones to put in place and make pass."""
+        return [p for p, _, _ in self.files if TEST_PATH.search(p) and p not in self.deleted]
 
     @property
     def sources(self) -> list[str]:
@@ -100,7 +102,10 @@ def github_repo(owner: str, name: str) -> dict:
 def candidates(repo: Path, *, scan: int = 400, max_files: int = 3, max_lines: int = 150,
                category: str | None = None) -> list[Candidate]:
     """Small commits that change source code and tests, newest first."""
-    out = _git(repo, "log", "--no-merges", f"-n{scan}", "--format=@@%H%x1f%P%x1f%s%x1f%b%x1e", "--numstat")
+    # --no-renames: a renamed file is a deletion plus an addition with real paths,
+    # instead of git's "dir/{old => new}/File" notation, which isn't a path.
+    out = _git(repo, "log", "--no-merges", "--no-renames", f"-n{scan}",
+               "--format=@@%H%x1f%P%x1f%s%x1f%b%x1e", "--numstat")
     found = []
     for block in out.split("@@")[1:]:
         header, _, numstat = block.partition("\x1e")
@@ -115,10 +120,18 @@ def candidates(repo: Path, *, scan: int = 400, max_files: int = 3, max_lines: in
         c = Candidate(sha.strip(), subject.strip(), body.strip(), files)
         if not files or len(files) > max_files or c.lines > max_lines or not c.tests or not c.sources:
             continue
+        c.deleted = _deleted(repo, c.sha)
+        if not c.tests:  # every test file the commit touched was deleted: nothing to make pass
+            continue
         if category and c.category != category:
             continue
         found.append(c)
     return found
+
+
+def _deleted(repo: Path, sha: str) -> set[str]:
+    out = _git(repo, "show", "--no-renames", "--name-status", "--format=", sha)
+    return {line.split("\t", 1)[1] for line in out.splitlines() if line.startswith("D\t")}
 
 
 def test_command(repo: Path, tests: list[str]) -> str:
