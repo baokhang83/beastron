@@ -1,0 +1,28 @@
+# Replays https://github.com/baokhang83/mnemo-jvm-warden/commit/b8eabd8d238370d2a9b5dbc5ee0427a7bc7d5779
+# Only the public commit is referenced; no code from the repository is stored here.
+prompt = "Fence correlated intent writes against concurrent pod changes.\n\nThe tests in warden-controller/src/test/java/io/github/baokhang83/mnemo/warden/controller/intent/CorrelatedEvidenceTest.java describe what's expected. Make them pass without changing them. Check with: mvn -o -q -pl warden-controller -am test -Dtest=CorrelatedEvidenceTest -Dsurefire.failIfNoSpecifiedTests=false"
+category = "feature"
+language = "java"
+source = "commit-replay"
+timeout = 1200
+tags = ["replay"]
+
+[workspace]
+url = "https://github.com/baokhang83/mnemo-jvm-warden"
+commit = "b8eabd8d238370d2a9b5dbc5ee0427a7bc7d5779"
+repo = "~/Documents/mnemo-jvm-warden"
+tests = ["warden-controller/src/test/java/io/github/baokhang83/mnemo/warden/controller/intent/CorrelatedEvidenceTest.java"]
+license = "Apache-2.0"
+
+[[checks]]
+type = "command"
+run = "mvn -o -q -pl warden-controller -am test -Dtest=CorrelatedEvidenceTest -Dsurefire.failIfNoSpecifiedTests=false"
+timeout = 900
+
+[[checks]]
+type = "unchanged"
+paths = ["warden-controller/src/test/java/io/github/baokhang83/mnemo/warden/controller/intent/CorrelatedEvidenceTest.java"]
+
+[[checks]]
+type = "only_changed"
+paths = ["deploy/harness/BoostFloorProbe.java", "warden-controller/src/main/java/io/github/baokhang83/mnemo/warden/controller/intent/CorrelatedIntentEmitter.java", "warden-controller/src/main/java/io/github/baokhang83/mnemo/warden/controller/intent/IntentEmitter.java"]

@@ -102,13 +102,34 @@ def github_repo(owner: str, name: str) -> dict:
     return json.loads(proc.stdout)
 
 
+# The published default branch. A task must reference a commit that stays public: one on a
+# work branch (or not pushed at all) disappears when the branch is deleted or rewritten.
+PUBLISHED_REFS = ("origin/HEAD", "origin/main", "origin/master")
+
+
+def published_ref(repo: Path) -> str:
+    for ref in PUBLISHED_REFS:
+        proc = subprocess.run(["git", "-C", str(repo), "rev-parse", "--verify", "-q", f"{ref}^{{commit}}"],
+                              capture_output=True, text=True, timeout=60)
+        if proc.returncode == 0:
+            return ref
+    raise MinerError(f"{repo}: no published default branch ({', '.join(PUBLISHED_REFS)}); run `git fetch origin` first")
+
+
+def is_published(repo: Path, sha: str) -> bool:
+    proc = subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", sha, published_ref(repo)],
+                          capture_output=True, timeout=60)
+    return proc.returncode == 0
+
+
 def candidates(repo: Path, *, scan: int = 400, max_files: int = 3, max_lines: int = 150,
                category: str | None = None) -> list[Candidate]:
-    """Small commits that change source code and tests, newest first."""
+    """Small commits on the published default branch that change source code and tests, newest first.
+    (Not the current branch: it can hold commits that were never pushed, or that won't stay public.)"""
     # --no-renames: a renamed file is a deletion plus an addition with real paths,
     # instead of git's "dir/{old => new}/File" notation, which isn't a path.
     out = _git(repo, "log", "--no-merges", "--no-renames", f"-n{scan}",
-               "--format=@@%H%x1f%P%x1f%s%x1f%b%x1e", "--numstat")
+               "--format=@@%H%x1f%P%x1f%s%x1f%b%x1e", "--numstat", published_ref(repo))
     found = []
     for block in out.split("@@")[1:]:
         header, _, numstat = block.partition("\x1e")
@@ -128,6 +149,10 @@ def candidates(repo: Path, *, scan: int = 400, max_files: int = 3, max_lines: in
             continue
         if category and c.category != category:
             continue
+        try:
+            test_command(repo, c.tests)
+        except MinerError:
+            continue  # e.g. Go tests in a Maven repository: nothing here can run them
         found.append(c)
     return found
 
@@ -137,18 +162,24 @@ def _deleted(repo: Path, sha: str) -> set[str]:
     return {line.split("\t", 1)[1] for line in out.splitlines() if line.startswith("D\t")}
 
 
+JVM_TEST_SUFFIXES = {".java", ".kt", ".groovy", ".scala"}
+
+
 def test_command(repo: Path, tests: list[str]) -> str:
     """The command that runs the given test files, offline where the build tool supports it."""
-    if (repo / "pom.xml").is_file():
+    jvm = all(Path(t).suffix in JVM_TEST_SUFFIXES for t in tests)
+    if jvm and (repo / "pom.xml").is_file():
         modules = sorted({t.split("src/test/")[0].rstrip("/") for t in tests if "src/test/" in t} - {""})
         classes = ",".join(sorted({Path(t).stem for t in tests}))
         module_flags = f"-pl {','.join(modules)} -am " if modules else ""
         return f"mvn -o -q {module_flags}test -Dtest={classes} -Dsurefire.failIfNoSpecifiedTests=false"
-    if (repo / "gradlew").is_file():
+    if jvm and (repo / "gradlew").is_file():
         return "./gradlew --offline test " + " ".join(f"--tests {Path(t).stem}" for t in tests)
-    if any(t.endswith(".py") for t in tests):
+    if all(t.endswith(".py") for t in tests):
         return "python3 -m pytest -q " + " ".join(sorted(tests))
-    raise MinerError("don't know how to run these tests (no pom.xml, gradlew or Python tests)")
+    kinds = ", ".join(sorted({Path(t).suffix or Path(t).name for t in tests}))
+    raise MinerError(f"don't know how to run these tests ({kinds}): Maven and Gradle run JVM tests, pytest runs "
+                     "Python tests; another build tool needs a branch here (see docs/refitting.md)")
 
 
 def task_id(info: RepoInfo, c: Candidate) -> str:
