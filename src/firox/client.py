@@ -77,8 +77,8 @@ class OpenAICompatClient:
             kwargs["tools"] = tools
         if p.temperature is not None:
             kwargs["temperature"] = p.temperature
-        if p.reasoning_effort:
-            kwargs["reasoning_effort"] = p.reasoning_effort
+        if p.effort:
+            kwargs["reasoning_effort"] = p.effort  # the OpenAI-compatible name for it
         if p.extra_body:
             kwargs["extra_body"] = p.extra_body
 
