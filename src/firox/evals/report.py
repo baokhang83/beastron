@@ -48,10 +48,15 @@ def load_results(run_dir: Path) -> list[dict[str, Any]]:
 
 
 def latest_run(runs_dir: Path) -> Path:
-    runs = sorted(p for p in runs_dir.glob("*") if (p / "results.jsonl").is_file())
+    """The run whose results were written last.
+
+    Run folders are named by start second plus a random suffix, so two runs
+    started in the same second can't be ordered by name.
+    """
+    runs = [p for p in runs_dir.glob("*") if (p / "results.jsonl").is_file()]
     if not runs:
         raise FileNotFoundError(f"no eval runs in {runs_dir}")
-    return runs[-1]
+    return max(runs, key=lambda p: ((p / "results.jsonl").stat().st_mtime_ns, p.name))
 
 
 # ----- summaries ----------------------------------------------------------------

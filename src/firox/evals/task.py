@@ -11,9 +11,12 @@
     [workspace]                 # synthetic / captured:
     fixture = "repo"            #   folder next to task.toml, copied fresh for every run
     setup = "setup.sh"          #   optional script run inside the copy (e.g. to build git history)
-    # commit-replay:
-    # repo = "~/Documents/blastradius"
-    # commit = "1a2b3c4"        #   the workspace is the repository at this commit's parent
+    # commit-replay: a public commit, referenced (no code is copied into this repository)
+    # url = "https://github.com/baokhang83/blastradius"
+    # commit = "1a2b3c4..."     #   the workspace is the repository at this commit's parent
+    # repo = "~/Documents/blastradius"   # optional local clone, used instead of cloning url
+    # tests = ["src/test/java/x/FooTest.java"]  # taken from the commit: the tests to make pass
+    # license = "Apache-2.0"    #   the repository's license, recorded when the task was added
 
     [[checks]]                  # decide pass or fail (types in firox.evals.checks)
     type = "command"
@@ -46,7 +49,7 @@ CATEGORIES = (
     "config",    # configuration and infrastructure
 )
 TOP_LEVEL_KEYS = {"prompt", "category", "language", "source", "timeout", "max_steps", "tags", "workspace", "checks"}
-WORKSPACE_KEYS = {"fixture", "setup", "repo", "commit"}
+WORKSPACE_KEYS = {"fixture", "setup", "repo", "commit", "url", "tests", "license"}
 
 
 class TaskError(Exception):
@@ -57,8 +60,11 @@ class TaskError(Exception):
 class WorkspaceSpec:
     fixture: str | None = None
     setup: str | None = None
-    repo: Path | None = None
+    repo: Path | None = None  # commit-replay: a local clone
     commit: str | None = None
+    url: str | None = None  # commit-replay: the public repository
+    tests: tuple[str, ...] = ()  # commit-replay: test files taken from the commit into the workspace
+    license: str | None = None
 
 
 @dataclass(frozen=True)
@@ -152,17 +158,23 @@ def _workspace(where: str, task_dir: Path, source: str, raw: Any) -> WorkspaceSp
     if unknown:
         raise TaskError(f"{where}: unknown [workspace] keys {sorted(unknown)}. Allowed: {sorted(WORKSPACE_KEYS)}")
     if source == "commit-replay":
-        if not raw.get("repo") or not raw.get("commit"):
-            raise TaskError(f"{where}: a commit-replay task needs [workspace] repo and commit")
+        if not raw.get("commit") or not (raw.get("repo") or raw.get("url")):
+            raise TaskError(f"{where}: a commit-replay task needs [workspace] commit, and url or repo")
         if raw.get("fixture") or raw.get("setup"):
             raise TaskError(f"{where}: a commit-replay task can't have a fixture or setup")
-        return WorkspaceSpec(repo=Path(raw["repo"]).expanduser(), commit=str(raw["commit"]))
+        tests = raw.get("tests", [])
+        if not isinstance(tests, list) or not all(isinstance(t, str) and t for t in tests):
+            raise TaskError(f"{where}: [workspace] tests must be a list of paths")
+        return WorkspaceSpec(
+            repo=Path(raw["repo"]).expanduser() if raw.get("repo") else None, commit=str(raw["commit"]),
+            url=raw.get("url"), tests=tuple(tests), license=raw.get("license"),
+        )
     fixture = raw.get("fixture", "repo")
     if not (task_dir / fixture).is_dir():
         raise TaskError(f"{where}: fixture folder '{fixture}' not found next to task.toml")
     setup = raw.get("setup")
     if setup and not (task_dir / setup).is_file():
         raise TaskError(f"{where}: setup script '{setup}' not found next to task.toml")
-    if raw.get("repo") or raw.get("commit"):
-        raise TaskError(f"{where}: repo and commit are only for commit-replay tasks")
+    if any(raw.get(k) for k in ("repo", "commit", "url", "tests", "license")):
+        raise TaskError(f"{where}: repo, commit, url, tests and license are only for commit-replay tasks")
     return WorkspaceSpec(fixture=fixture, setup=setup)
