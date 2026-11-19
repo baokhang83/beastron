@@ -1,0 +1,14 @@
+prompt = "The tests in test_utils.py fail. Find the bug and fix it, then run the tests with: python3 -m pytest -q"
+category = "fix"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["seed", "quick"]
+
+[[checks]]
+type = "command"
+run = "python3 -m pytest -q"
+
+[[checks]]
+type = "unchanged"
+paths = ["test_utils.py"]

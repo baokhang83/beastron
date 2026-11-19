@@ -1,0 +1,25 @@
+prompt = "In handlers.py, a payment that times out should be retried after 5 seconds instead of 2. Change only that."
+category = "config"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["seed", "quick"]
+
+[[checks]]
+type = "contains"
+path = "handlers.py"
+text = '^                    retry_delay = 5$'
+regex = true
+
+[[checks]]
+type = "not_contains"
+path = "handlers.py"
+text = "retry_delay = 2"
+
+[[checks]]
+type = "command"
+run = "python3 -c \"import ast; ast.parse(open('handlers.py').read())\""
+
+[[checks]]
+type = "only_changed"
+paths = ["handlers.py"]

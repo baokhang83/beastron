@@ -1,0 +1,16 @@
+prompt = "Which commit fixed the rounding problem in the monthly totals, and which file did it change? Give the commit's short hash."
+category = "git"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["seed", "quick"]
+
+[workspace]
+setup = "setup.sh"
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["ce00427", 'totals\.py']
+
+[[checks]]
+type = "no_changes"
