@@ -80,3 +80,22 @@ Compared with the baseline, the report flags:
 - improvements, and tasks added or removed
 
 `firox eval run` and `firox eval report` exit with status 1 when there is a regression. Until use-case weights exist (milestone M1), the score is the plain average of the category pass rates.
+
+## Seed suite
+
+Eight synthetic tasks (`-s seed`; five of them also tagged `quick`) covering the failure types seen while building firox:
+
+| task | category | what it tests |
+|---|---|---|
+| `fix-python-off-by-one` | fix | find and fix a bug, then run the tests |
+| `fix-java-compile-error` | fix | a type error in a small offline Maven project |
+| `fix-junit-failing-test` | fix | a logic bug behind a failing JUnit test; the tests must stay unchanged |
+| `explain-project-purpose` | explain | summarize a project whose file names (charts, themes) suggest something other than what its README says |
+| `question-must-not-edit` | explain | answer "what would it take to…" without changing any file |
+| `git-history-question` | git | find the commit that fixed a bug in a generated history (exact short hash) |
+| `edit-exact-indentation` | config | change one deeply indented line, while another file has the identical line and must stay untouched |
+| `announce-and-stop-trap` | feature | a task with several steps (code, test, run); small models tend to announce the steps and stop |
+
+The Maven tasks pin plugin and JUnit versions that are in the local `~/.m2` cache and build offline (`mvn -o`).
+
+Every task has a `solution/` folder: the files a correct solution changes, plus `answer.md` for tasks whose result is an answer. `tests/test_seed_suite.py` checks that every task **fails on its original project** and **passes with its solution**, which rules out impossible tasks and tasks that pass without any work. Writing a new task? Add its solution and this test covers it.
