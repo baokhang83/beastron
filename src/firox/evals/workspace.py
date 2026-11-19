@@ -66,18 +66,33 @@ def create(task: Task, dest: Path) -> PreparedWorkspace:
 
 
 def _commit_replay(task: Task, dest: Path) -> PreparedWorkspace:
-    repo = task.workspace.repo.resolve()
-    if is_excluded(repo):
+    spec = task.workspace
+    repo = spec.repo.resolve() if spec.repo else None
+    if repo and is_excluded(repo):
         raise WorkspaceError(f"{repo} is on the exclusion list; it can't be used for eval tasks")
-    if not (repo / ".git").exists():
-        raise WorkspaceError(f"{repo} is not a git repository")
-    target = _git(repo, "rev-parse", "--verify", f"{task.workspace.commit}^{{commit}}")
-    base = _git(repo, "rev-parse", "--verify", f"{target}^")  # fails clearly for a root commit
-    _run(["git", *SAFE_CONFIG, "clone", "--quiet", "--local", "--no-checkout", str(repo), str(dest)], repo, "git clone")
+    if repo and (repo / ".git").exists():
+        source, flags = str(repo), ["--local"]  # a local clone: fast, offline
+    elif spec.url:
+        source, flags = spec.url, []  # no local clone: fetch the public repository
+    else:
+        raise WorkspaceError(f"{repo} is not a git repository, and the task has no url")
+    _run(["git", *SAFE_CONFIG, "clone", "--quiet", *flags, "--no-checkout", source, str(dest)], dest.parent, "git clone")
+    target = _git(dest, "rev-parse", "--verify", f"{spec.commit}^{{commit}}")
+    base = _git(dest, "rev-parse", "--verify", f"{target}^")  # fails clearly for a root commit
     _run(["git", *SAFE_CONFIG, "-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", base], dest, "git checkout")
     if _git(dest, "rev-parse", "HEAD") != base:
         raise WorkspaceError(f"workspace for {task.id} is not at {base}")
+    if spec.tests:
+        # The commit's tests describe the expected behaviour: they are put in place,
+        # and the agent's job is to make them pass.
+        _run(["git", *SAFE_CONFIG, "checkout", "--quiet", target, "--", *spec.tests], dest, "taking the tests from the commit")
     return PreparedWorkspace(dest.resolve(), base, target)
+
+
+def apply_target(workspace: PreparedWorkspace) -> None:
+    """Turn a commit-replay workspace into the real commit: the reference solution."""
+    _run(["git", *SAFE_CONFIG, "-c", "advice.detachedHead=false", "checkout", "--quiet", "--force", "--detach",
+          workspace.target_commit], workspace.root, "checking out the real commit")
 
 
 def _git(cwd: Path, *args: str) -> str:

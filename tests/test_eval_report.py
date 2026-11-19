@@ -158,3 +158,13 @@ def test_report_history(tmp_path):
     assert out.exit_code == 0
     assert out.output.index("20261118T010000Z") < out.output.index("20261119T010000Z")
     assert "0%" in out.output and "100%" in out.output
+
+
+def test_latest_run_is_the_one_written_last_even_within_the_same_second(tmp_path):
+    import os
+    from firox.evals.report import latest_run
+    older = write_run(tmp_path, "20261119T010000Z_zzzzzz", [])  # sorts last by name ...
+    newer = write_run(tmp_path, "20261119T010000Z_aaaaaa", [])  # ... but was written later
+    os.utime(older / "results.jsonl", ns=(1_000_000_000, 1_000_000_000))
+    os.utime(newer / "results.jsonl", ns=(2_000_000_000, 2_000_000_000))
+    assert latest_run(tmp_path / "evals" / "runs") == newer
