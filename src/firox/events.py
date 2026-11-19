@@ -13,6 +13,13 @@ from typing import Any, Literal
 
 
 @dataclass(frozen=True)
+class TurnStart:
+    """A new user message; the agent starts working on it."""
+
+    task: str
+
+
+@dataclass(frozen=True)
 class ModelStart:
     step: int
 
@@ -95,7 +102,8 @@ class TurnEnd:
 
 
 Event = (
-    ModelStart
+    TurnStart
+    | ModelStart
     | ReasoningDelta
     | TextDelta
     | ModelEnd

@@ -15,6 +15,7 @@ from .agent import Agent
 from .client import OpenAICompatClient
 from .config import Config, ConfigError, load_config
 from .tools import Workspace, make_tools
+from .trace import SessionTrace, fan_out, model_digest
 from .ui import RichUI, fmt_tokens
 
 COMMANDS = {
@@ -51,6 +52,9 @@ def main(
     briefing: Annotated[
         bool, typer.Option("--briefing/--no-briefing", help="Read the project's docs (AGENTS.md, README.md, ...) at startup.")
     ] = True,
+    trace: Annotated[
+        bool, typer.Option("--trace/--no-trace", help="Record the session in ~/.local/state/firox/sessions/.")
+    ] = True,
 ) -> None:
     """firox: a coding agent for local and open-weight models."""
     ui = RichUI(verbose=verbose)
@@ -63,19 +67,27 @@ def main(
         raise typer.Exit(1) from None
 
     ws = Workspace(Path.cwd())
+    session = SessionTrace.start(ws, profile) if trace else None
     agent = Agent(
-        client, ws, make_tools(ws), on_event=ui.handle, approve=ui.approve,
+        client, ws, make_tools(ws), on_event=fan_out(ui.handle, session), approve=ui.approve,
         max_steps=max_steps, briefing=briefing,
     )
+    if session:
+        session.note("briefing", files=[f.path for f in agent.briefing.files], chars=agent.briefing.chars)
     ui.header(profile, ws.root, agent.briefing if briefing else None)
 
-    if task:
-        reason = agent.run(task)
-        raise typer.Exit(0 if reason == "done" else 1)
-    _repl(agent, ui, cfg)
+    try:
+        if task:
+            reason = agent.run(task)
+            raise typer.Exit(0 if reason == "done" else 1)
+        _repl(agent, ui, cfg, trace=session)
+    finally:
+        if session:
+            session.close()
+            ui.info(f"session trace: {session.path}")
 
 
-def _repl(agent: Agent, ui: RichUI, cfg: Config) -> None:
+def _repl(agent: Agent, ui: RichUI, cfg: Config, trace: SessionTrace | None = None) -> None:
     HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
     session: PromptSession[str] = PromptSession(
         history=FileHistory(str(HISTORY_FILE)),
@@ -94,14 +106,14 @@ def _repl(agent: Agent, ui: RichUI, cfg: Config) -> None:
         if line.lower() in ("exit", "quit", ":q"):  # people type these without the slash
             break
         if line.startswith("/"):
-            if _command(line, agent, ui, cfg) == "quit":
+            if _command(line, agent, ui, cfg, trace) == "quit":
                 break
             continue
         ui.console.print()
         agent.run(line)
 
 
-def _command(line: str, agent: Agent, ui: RichUI, cfg: Config) -> str | None:
+def _command(line: str, agent: Agent, ui: RichUI, cfg: Config, trace: SessionTrace | None = None) -> str | None:
     cmd, _, arg = line.partition(" ")
     arg = arg.strip()
     if cmd in ("/quit", "/exit"):
@@ -122,10 +134,15 @@ def _command(line: str, agent: Agent, ui: RichUI, cfg: Config) -> str | None:
         except ConfigError as e:
             ui.error(str(e))
             return None
+        if trace:
+            trace.note("model_switch", profile=agent.client.profile.name, model=agent.client.profile.model,
+                         digest=model_digest(agent.client.profile))
         ui.info("switched model; the conversation so far is kept (/clear to start fresh)")
         ui.header(agent.client.profile, agent.workspace.root)
     elif cmd == "/clear":
         agent.reset()
+        if trace:
+            trace.note("clear")
         ui.context = (0, agent.client.profile.context)
         ui.info("started a fresh conversation")
         if agent.use_briefing:

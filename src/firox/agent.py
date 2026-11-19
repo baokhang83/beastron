@@ -26,6 +26,7 @@ from .events import (
     ToolStart,
     TurnEnd,
     TurnEndReason,
+    TurnStart,
 )
 from .quirks import ToolCall
 from .tools import Tool, ToolError, ToolResult, Workspace
@@ -148,6 +149,7 @@ class Agent:
         prompt_tokens = completion_tokens = 0
         step = 0
         nudges = 0
+        self.emit(TurnStart(task))
         self.messages.append({"role": "user", "content": task})
         schemas = [t.schema() for t in self.tools.values()]
         self._changes: dict[str, FileChange] = {}
