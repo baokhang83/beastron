@@ -9,6 +9,7 @@ import time
 from collections.abc import Callable
 from datetime import date
 
+from .briefing import Briefing, budget_for, build_briefing
 from .client import Message, ModelClient, ModelError
 from .events import (
     ApprovalRequest,
@@ -109,9 +110,12 @@ class Agent:
         on_event: Callable[[Event], None],
         approve: Approver,
         max_steps: int = 25,
+        briefing: bool = True,
     ) -> None:
         self.client = client
         self.workspace = workspace
+        self.use_briefing = briefing
+        self.briefing = Briefing()
         self.tools = {t.name: t for t in tools}
         self.emit = on_event
         self.approve = approve
@@ -128,6 +132,12 @@ class Agent:
             os=f"{platform.system()} {platform.release()}",
             today=date.today().isoformat(),
         )
+        # Read the project's docs up front, so the model knows what the project
+        # is before its first step instead of having to think of opening them.
+        if self.use_briefing:
+            self.briefing = build_briefing(self.workspace, budget_for(self.client.profile.context))
+            if self.briefing.text:
+                system += "\n" + self.briefing.text
         self.messages = [{"role": "system", "content": system}]
         self.context_used = 0
 
