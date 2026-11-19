@@ -15,6 +15,7 @@ from .events import (
     ContextUpdate,
     ErrorEvent,
     Event,
+    FileChange,
     ModelEnd,
     ModelStart,
     Nudge,
@@ -53,6 +54,25 @@ def announces_unfinished_action(text: str) -> bool:
     tail = text.strip()[-300:]
     return bool(tail) and bool(_ANNOUNCES_ACTION.search(tail))
 
+
+def merge_change(changes: dict[str, FileChange], new: FileChange) -> None:
+    """Fold a file change into the turn's record, one entry per path."""
+    old = changes.get(new.path)
+    if old is None:
+        changes[new.path] = new
+        return
+    if old.kind == "created" and new.kind == "deleted":
+        del changes[new.path]  # created and removed again: no net change
+        return
+    if old.kind == "created":
+        kind = "created"
+    elif old.kind == "deleted" and new.kind == "created":
+        kind = "modified"  # deleted, then written again
+    else:
+        kind = new.kind
+    changes[new.path] = FileChange(new.path, kind, old.added + new.added, old.removed + new.removed)
+
+
 SYSTEM_PROMPT = """\
 You are firox, a coding agent. You work on the project in {root} using the tools provided.
 
@@ -60,14 +80,18 @@ How to work:
 - If the user asks a question ("how does...", "what would it take to...", "why..."), answer it.
   Look at the code if that helps, but do not change any file unless the user asks you to make the change.
 - Explore before changing anything: use list_files and search_code to find the relevant code, then read_file.
+- When the request is about recent work ("my latest changes", "what I just added", "undo my last change"),
+  start with the git tool: status lists uncommitted changes and untracked (brand-new) files, diff shows the
+  changes, log and show show recent commits.
 - Always read a file before editing it. Use edit_file for changes to existing files; old_text must be copied exactly from the file.
-- Use write_file only to create new files or when replacing a whole file is clearly simpler.
+- Use write_file only to create new files or when replacing a whole file is clearly simpler. Use delete_file to remove a file.
 - After changing code, verify it with run_shell (run the tests, or run the program).
 - If a tool returns an error, read it carefully and fix your next call instead of repeating the same one.
 - Use paths relative to the project root.
 - Never announce an action ("I'll fix it", "Let me run the tests") and then stop: call the tool in that same reply.
   A reply without a tool call ends your turn, so only reply without one when the task is finished.
 - When the task is done, reply with a short summary of what you changed and how you verified it.
+  Only mention changes you actually made with a tool; firox shows the user its own list of changed files.
 - If the request is unclear, ask a question instead of guessing.
 
 Environment: {os}, today is {today}.
@@ -94,6 +118,8 @@ class Agent:
         self.max_steps = max_steps
         self.messages: list[Message] = []
         self.context_used = 0
+        self._changes: dict[str, FileChange] = {}
+        self._shell_commands = 0
         self.reset()
 
     def reset(self) -> None:
@@ -114,9 +140,16 @@ class Agent:
         nudges = 0
         self.messages.append({"role": "user", "content": task})
         schemas = [t.schema() for t in self.tools.values()]
+        self._changes: dict[str, FileChange] = {}
+        self._shell_commands = 0
 
         def finish(reason: TurnEndReason) -> TurnEndReason:
-            self.emit(TurnEnd(reason, step, prompt_tokens, completion_tokens, time.monotonic() - started, model_seconds))
+            self.emit(
+                TurnEnd(
+                    reason, step, prompt_tokens, completion_tokens, time.monotonic() - started, model_seconds,
+                    changes=tuple(self._changes.values()), shell_commands=self._shell_commands,
+                )
+            )
             return reason
 
         try:
@@ -187,6 +220,8 @@ class Agent:
         else:
             result = self._run_tool(tool, args)
 
+        if result.change:
+            merge_change(self._changes, result.change)
         self.emit(ToolEnd(call.id, call.name, result.ok, result.summary, result.output))
         output = result.output
         if len(output) > MAX_TOOL_OUTPUT:
@@ -200,6 +235,8 @@ class Agent:
                 preview = tool.preview(args)  # also validates; raises ToolError on a bad call
                 if not self.approve(ApprovalRequest(tool.name, args, preview)):
                     return ToolResult(DENIED_MESSAGE, "denied", ok=False, denied=True)
+            if tool.name == "run_shell":
+                self._shell_commands += 1  # its file changes are invisible to the change record
             return tool.run(args)
         except ToolError as e:
             return ToolResult(f"Error: {e}", str(e).split(". ")[0][:80], ok=False)

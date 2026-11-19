@@ -105,6 +105,36 @@ def test_edit_not_found_without_a_close_match(tools):
     assert "Read the file again" in str(err.value)
 
 
+def test_delete_file(tools, ws):
+    delete = tools["delete_file"]
+    preview = delete.preview({"path": "src/app.py"})
+    assert "not in a git repository: cannot be restored" in preview.title
+    assert "-    return a - b" in preview.body  # the whole file shown as removed
+    result = delete.run({"path": "src/app.py"})
+    assert not (ws.root / "src/app.py").exists()
+    assert result.change.kind == "deleted" and result.change.removed == 4
+
+
+def test_delete_file_refuses_dirs_missing_files_and_git(tools, ws):
+    delete = tools["delete_file"]
+    with pytest.raises(ToolError, match="directory"):
+        delete.preview({"path": "src"})
+    with pytest.raises(ToolError, match="not found"):
+        delete.preview({"path": "nope.py"})
+    with pytest.raises(ToolError, match=".git"):
+        delete.preview({"path": ".git/config"})
+    with pytest.raises(ToolError, match="outside the project"):
+        delete.preview({"path": "../elsewhere.py"})
+
+
+def test_file_tools_report_their_changes(tools):
+    created = tools["write_file"].run({"path": "new.py", "content": "a\nb\n"})
+    assert (created.change.kind, created.change.added, created.change.removed) == ("created", 2, 0)
+    edited = tools["edit_file"].run({"path": "new.py", "old_text": "b", "new_text": "c"})
+    assert (edited.change.kind, edited.change.added, edited.change.removed) == ("modified", 1, 1)
+    assert tools["read_file"].run({"path": "new.py"}).change is None
+
+
 def test_write_file_creates_parent_dirs(tools, ws):
     tools["write_file"].run({"path": "new/dir/hello.py", "content": "print('hi')\n"})
     assert (ws.root / "new/dir/hello.py").read_text() == "print('hi')\n"
