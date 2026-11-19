@@ -73,7 +73,8 @@ def test_eval_lists_its_subcommands():
         assert name in result.output
 
 
-def test_eval_commands_not_built_yet_say_which_issue_brings_them():
+def test_eval_report_without_any_run_says_so(tmp_path, monkeypatch):
+    monkeypatch.setenv("FIROX_STATE_DIR", str(tmp_path / "empty"))
     result = invoke("eval", "report")
-    assert result.exit_code == 2
-    assert "issues/11" in result.output
+    assert result.exit_code == 1
+    assert "no eval runs" in result.output
