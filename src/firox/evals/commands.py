@@ -6,6 +6,7 @@
 - `propose`: list commits of a public repository that could become replay tasks
 - `add`: draft a replay task from a commit, verify it, and write it after approval
 - `verify`: check tasks fail as given and pass with their reference solution
+- `coverage`: compare the suite with the usage weights and say what to add
 
 `run` and `report` exit with status 1 when they find a regression.
 """
@@ -19,9 +20,11 @@ import typer
 from rich.console import Console
 from rich.markup import escape
 
+import json
 import shutil
 import tempfile
 import time
+from collections import Counter
 from dataclasses import asdict
 
 from rich.syntax import Syntax
@@ -40,6 +43,8 @@ from .report import (
     latest_run,
     load_baseline,
     load_results,
+    WEIGHTS_FILE,
+    load_overrides,
     load_summary,
     load_weights,
     save_baseline,
@@ -48,8 +53,10 @@ from .report import (
 )
 from .runner import RunResult
 from ..usecases import commits
-from .task import TASKS_DIR, TaskError, load_task, load_tasks
+from .task import CATEGORIES, TASKS_DIR, TaskError, load_task, load_tasks
 from .verify import verify
+
+MIN_PER_CATEGORY = 2
 
 eval_app = typer.Typer(
     name="eval",
@@ -373,3 +380,51 @@ def verify_cmd(
         console.print(f"{t.id:<60} {time.monotonic() - started:5.1f}s  {status}")
     console.print(f"\n{len(tasks) - bad}/{len(tasks)} tasks verified")
     raise typer.Exit(1 if bad else 0)
+
+
+@eval_app.command("coverage")
+def coverage(
+    size: Annotated[int | None, typer.Option(help="Target suite size (default: the current size).")] = None,
+    tasks_dir: Annotated[Path, typer.Option(help="Folder with the eval tasks.")] = TASKS_DIR,
+) -> None:
+    """Compare the suite's tasks per category and language with your weights, and say what to add."""
+    console = Console(highlight=False)
+    try:
+        tasks = load_tasks(tasks_dir)
+        weights = load_weights()
+    except (TaskError, ValueError) as e:
+        console.print(f"[red]{escape(str(e))}[/]")
+        raise typer.Exit(1) from None
+    if not weights:
+        console.print("[yellow]No weights yet: run `firox usecases scan` and `firox usecases classify --write`.[/]")
+        raise typer.Exit(1)
+    target_size = size or len(tasks)
+    counts = Counter(t.category for t in tasks)
+    console.print(f"{len(tasks)} tasks · target size {target_size} · at least {MIN_PER_CATEGORY} per category"
+                  + (" · weights include your overrides (evals/weights.toml)" if any(load_overrides().values()) else ""))
+    table = Table(box=None, pad_edge=False, show_edge=False)
+    for column in ("category", "weight", "tasks", "share of suite", "target", "add"):
+        table.add_column(column, justify="left" if column == "category" else "right")
+    to_add = []
+    for category in CATEGORIES:
+        weight = weights.get(category, 0.0)
+        target = max(MIN_PER_CATEGORY, round(weight * target_size))
+        gap = target - counts[category]
+        if gap > 0:
+            to_add.append(f"{category} +{gap}")
+        table.add_row(category, f"{weight:.1%}", str(counts[category]), f"{counts[category] / max(len(tasks), 1):.0%}",
+                      str(target), f"[yellow]+{gap}[/]" if gap > 0 else ("[dim]-[/]" if gap == 0 else f"[dim]{gap}[/]"))
+    console.print(table)
+
+    usage = json.loads(WEIGHTS_FILE.read_text()).get("languages", {}) if WEIGHTS_FILE.is_file() else {}
+    known = {k: v for k, v in usage.items() if k not in ("unknown", "other")}
+    if known:
+        total_usage = sum(known.values())
+        suite_languages = Counter(t.language for t in tasks)
+        lines = []
+        for language, n in sorted(known.items(), key=lambda kv: -kv[1]):
+            lines.append(f"{language} {n / total_usage:.0%} of your work, {suite_languages[language] / len(tasks):.0%} of the suite")
+        console.print("languages: " + " · ".join(lines))
+    console.print(("[yellow]to match your weights, add: " + ", ".join(to_add) + "[/]") if to_add
+                  else "[green]the suite matches your weights[/]")
+    console.print("[dim]more tasks for a category: `firox eval propose` (commit replays) or a new synthetic task; see docs/refitting.md[/]")

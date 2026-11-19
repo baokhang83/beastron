@@ -35,6 +35,7 @@ SCHEMA = 1
 RESULTS_DIR = Path("evals/results")
 BASELINES_DIR = Path("evals/baselines")
 WEIGHTS_FILE = Path("evals/usecases.json")
+OVERRIDES_FILE = Path("evals/weights.toml")  # the owner's adjustments; never overwritten
 Z95 = 1.96
 
 
@@ -61,12 +62,54 @@ def latest_run(runs_dir: Path) -> Path:
 
 # ----- summaries ----------------------------------------------------------------
 
-def load_weights(path: Path = WEIGHTS_FILE) -> dict[str, float] | None:
-    """Category weights from use-case inference, or None when there are none."""
+def load_weights(path: Path = WEIGHTS_FILE, overrides: Path = OVERRIDES_FILE) -> dict[str, float] | None:
+    """Category weights: measured from real usage, then adjusted by the owner's overrides. None if neither exists."""
+    measured: dict[str, float] = {}
+    if path.is_file():
+        measured = {c: float(w) for c, w in (json.loads(path.read_text(encoding="utf-8")).get("weights") or {}).items()}
+    adjusted = apply_overrides(measured, load_overrides(overrides))
+    return adjusted or None
+
+
+def load_overrides(path: Path = OVERRIDES_FILE) -> dict[str, dict[str, float]]:
+    """The owner's adjustments (evals/weights.toml):
+
+        [multiply]          # scale a measured weight, e.g. count fixes 1.5 times as much
+        fix = 1.5
+        [set]               # or fix a category's share of the score (0 to 1); the others share the rest
+        explain = 0.20
+    """
     if not path.is_file():
-        return None
-    weights = json.loads(path.read_text(encoding="utf-8")).get("weights") or {}
-    return {category: float(w) for category, w in weights.items()} or None
+        return {"multiply": {}, "set": {}}
+    import tomllib
+    from .task import CATEGORIES
+
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    unknown_tables = set(data) - {"multiply", "set"}
+    if unknown_tables:
+        raise ValueError(f"{path}: unknown tables {sorted(unknown_tables)}; use [multiply] and [set]")
+    result = {"multiply": {}, "set": {}}
+    for table in ("multiply", "set"):
+        for category, value in (data.get(table) or {}).items():
+            if category not in CATEGORIES:
+                raise ValueError(f"{path}: [{table}] {category} is not a category; use one of {list(CATEGORIES)}")
+            if not isinstance(value, (int, float)) or value < 0 or (table == "set" and value > 1):
+                raise ValueError(f"{path}: [{table}] {category} = {value!r} is out of range")
+            result[table][category] = float(value)
+    if sum(result["set"].values()) > 1:
+        raise ValueError(f"{path}: the [set] shares add up to more than 1")
+    return result
+
+
+def apply_overrides(weights: dict[str, float], overrides: dict[str, dict[str, float]]) -> dict[str, float]:
+    multiplied = {c: w * overrides["multiply"].get(c, 1.0) for c, w in weights.items()}
+    fixed = overrides["set"]
+    rest = {c: w for c, w in multiplied.items() if c not in fixed and w > 0}
+    remaining = 1.0 - sum(fixed.values())
+    total = sum(rest.values())
+    result = {c: w / total * remaining for c, w in rest.items()} if total else {}
+    result.update(fixed)
+    return {c: round(w, 4) for c, w in sorted(result.items(), key=lambda kv: -kv[1]) if w > 0}
 
 
 def score(categories: dict[str, dict[str, Any]], weights: dict[str, float] | None) -> tuple[float, str]:
