@@ -129,3 +129,18 @@ def test_snapshot_hashes_files_and_skips_git_and_caches(ws):
 def test_badly_written_checks_are_rejected(check, message):
     with pytest.raises(CheckError, match=message.replace("[", r"\[").replace("]", r"\]").replace("(", r"\(")):
         parse_checks([check])
+
+
+def test_snapshot_skips_what_git_ignores_in_a_git_workspace(tmp_path):
+    import subprocess
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    (tmp_path / ".gitignore").write_text("dependency-reduced-pom.xml\nout/\n")
+    (tmp_path / "pom.xml").write_text("<project/>")
+    before = snapshot(tmp_path)
+    # what a build creates: an ignored file and an ignored folder
+    (tmp_path / "dependency-reduced-pom.xml").write_text("<project/>")
+    (tmp_path / "out" / "classes").mkdir(parents=True)
+    (tmp_path / "out" / "classes" / "A.class").write_bytes(b"\xca\xfe")
+    (tmp_path / "notes.txt").write_text("a real change")
+    assert changed_paths(before, snapshot(tmp_path)) == ["notes.txt"]
+    assert set(snapshot(tmp_path)) == {".gitignore", "pom.xml", "notes.txt"}
