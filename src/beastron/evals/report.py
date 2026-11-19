@@ -13,6 +13,7 @@
     the 95% confidence intervals (Wilson score) of the two rates don't overlap;
     both come from few runs, so smaller drops are treated as noise
   - a changed model digest, so a model update can't hide inside a score change
+  - for Claude Code reference runs, a changed Claude Code version, for the same reason
   - improvements, and tasks added or removed
 
 The score weights each category's pass rate by how often the owner asks for that
@@ -161,6 +162,8 @@ def _summary(profile: str, runs: list[dict[str, Any]], run_id: str, weights: dic
         "profile": profile,
         "model": runs[0]["model"],
         "model_digests": sorted({r["model_digest"] for r in runs if r.get("model_digest")}),
+        # reference runs: the Claude Code versions used (empty for beastron's own runs)
+        "claude_code_versions": sorted({r["claude_code_version"] for r in runs if r.get("claude_code_version")}),
         "beastron_commit": runs[0].get("beastron_commit"),
         "sandboxed": all(r.get("sandboxed", True) for r in runs),
         "tasks": dict(sorted(tasks.items())),
@@ -229,6 +232,7 @@ class Comparison:
     task_improvements: list[str] = field(default_factory=list)
     category_regressions: list[str] = field(default_factory=list)
     digest_changed: bool = False
+    claude_code_changed: bool = False
     added: list[str] = field(default_factory=list)
     removed: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
@@ -273,6 +277,13 @@ def compare(current: dict[str, Any], baseline: dict[str, Any]) -> Comparison:
         result.notes.append(
             f"the model changed since the baseline: {', '.join(d[:12] for d in baseline.get('model_digests', [])) or 'unknown'}"
             f" → {', '.join(d[:12] for d in current.get('model_digests', [])) or 'unknown'}"
+        )
+    now_versions, base_versions = set(current.get("claude_code_versions", [])), set(baseline.get("claude_code_versions", []))
+    if (now_versions or base_versions) and now_versions != base_versions:
+        result.claude_code_changed = True
+        result.notes.append(
+            f"Claude Code changed since the baseline: {', '.join(sorted(base_versions)) or 'unknown'}"
+            f" → {', '.join(sorted(now_versions)) or 'unknown'}"
         )
     return result
 

@@ -31,11 +31,13 @@ def available() -> bool:
     return platform.system() == "Darwin" and shutil.which("sandbox-exec") is not None
 
 
-def profile(writable: list[Path]) -> str:
+def profile(writable: list[Path], regexes: tuple[str, ...] = ()) -> str:
+    """The sandbox rules: deny file writes, except under `writable`, the temp folders, the caches,
+    and paths matching `regexes` (for files replaced atomically, such as ~/.claude.json)."""
     temp = {Path("/private/tmp"), Path("/private/var/folders"), Path(tempfile.gettempdir()).resolve()}
     caches = {Path(c).expanduser() for c in CACHES}
     paths = sorted({p.resolve() for p in writable} | temp | {c.resolve() if c.exists() else c for c in caches})
-    rules = " ".join(f'(subpath "{_quote(p)}")' for p in paths)
+    rules = " ".join([f'(subpath "{_quote(p)}")' for p in paths] + [f'(regex #"{r}")' for r in regexes])
     return (
         "(version 1)\n"
         "(allow default)\n"
@@ -46,11 +48,11 @@ def profile(writable: list[Path]) -> str:
     )
 
 
-def command_prefix(writable: list[Path]) -> list[str]:
+def command_prefix(writable: list[Path], regexes: tuple[str, ...] = ()) -> list[str]:
     """Put this in front of `/bin/sh -c <command>` to run the command in the sandbox."""
     if not available():
         raise SandboxError("sandbox-exec is not available (it exists only on macOS)")
-    rules = profile(writable)
+    rules = profile(writable, regexes)
     probe = subprocess.run(["sandbox-exec", "-p", rules, "/usr/bin/true"], capture_output=True, text=True)
     if probe.returncode != 0:
         raise SandboxError(f"sandbox-exec rejected the profile: {probe.stderr.strip()}")
