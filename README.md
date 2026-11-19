@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/assets/beastron-logo.png" alt="Beastron Mascot" width="260" />
+  <img src="docs/assets/beastron-logo2.png" alt="Beastron Mascot" width="260" />
   <h1>Beastron</h1>
 </div>
 
