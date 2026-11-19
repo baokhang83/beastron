@@ -1,0 +1,46 @@
+prompt = "Add a section for version 1.1.0 at the top of CHANGELOG.md that lists the changes made since the v1.0.0 tag. Use the git history to find them."
+category = "docs"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full"]
+
+[workspace]
+setup = "setup.sh"
+
+[[checks]]
+type = "contains"
+path = "CHANGELOG.md"
+text = "^##\\s*\\[?v?1\\.1\\.0"
+regex = true
+
+[[checks]]
+type = "contains"
+path = "CHANGELOG.md"
+text = "json"
+regex = true
+
+[[checks]]
+type = "contains"
+path = "CHANGELOG.md"
+text = "empty"
+regex = true
+
+[[checks]]
+type = "contains"
+path = "CHANGELOG.md"
+text = "categor"
+regex = true
+
+[[checks]]
+type = "contains"
+path = "CHANGELOG.md"
+text = "First release: CSV export of bank statements."
+
+[[checks]]
+type = "command"
+run = "python3 -c \"s = open('CHANGELOG.md').read(); assert s.index('1.1.0') < s.index('1.0.0')\""
+
+[[checks]]
+type = "only_changed"
+paths = ["CHANGELOG.md"]

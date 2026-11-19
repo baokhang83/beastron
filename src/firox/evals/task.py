@@ -17,6 +17,7 @@
     # repo = "~/Documents/blastradius"   # optional local clone, used instead of cloning url
     # tests = ["src/test/java/x/FooTest.java"]  # taken from the commit: the tests to make pass
     # license = "Apache-2.0"    #   the repository's license, recorded when the task was added
+    # at = "commit"             #   start AT the commit instead of its parent (questions about a repository)
 
     [[checks]]                  # decide pass or fail (types in firox.evals.checks)
     type = "command"
@@ -49,7 +50,7 @@ CATEGORIES = (
     "config",    # configuration and infrastructure
 )
 TOP_LEVEL_KEYS = {"prompt", "category", "language", "source", "timeout", "max_steps", "tags", "workspace", "checks"}
-WORKSPACE_KEYS = {"fixture", "setup", "repo", "commit", "url", "tests", "license"}
+WORKSPACE_KEYS = {"fixture", "setup", "repo", "commit", "url", "tests", "license", "at"}
 
 
 class TaskError(Exception):
@@ -65,6 +66,7 @@ class WorkspaceSpec:
     url: str | None = None  # commit-replay: the public repository
     tests: tuple[str, ...] = ()  # commit-replay: test files taken from the commit into the workspace
     license: str | None = None
+    at: str = "parent"  # commit-replay: start at the commit's "parent" (replay it) or at the "commit" itself
 
 
 @dataclass(frozen=True)
@@ -165,9 +167,14 @@ def _workspace(where: str, task_dir: Path, source: str, raw: Any) -> WorkspaceSp
         tests = raw.get("tests", [])
         if not isinstance(tests, list) or not all(isinstance(t, str) and t for t in tests):
             raise TaskError(f"{where}: [workspace] tests must be a list of paths")
+        at = raw.get("at", "parent")
+        if at not in ("parent", "commit"):
+            raise TaskError(f"{where}: [workspace] at must be \"parent\" or \"commit\"")
+        if at == "commit" and tests:
+            raise TaskError(f"{where}: tests are only taken from a commit that is replayed (at = \"parent\")")
         return WorkspaceSpec(
             repo=Path(raw["repo"]).expanduser() if raw.get("repo") else None, commit=str(raw["commit"]),
-            url=raw.get("url"), tests=tuple(tests), license=raw.get("license"),
+            url=raw.get("url"), tests=tuple(tests), license=raw.get("license"), at=at,
         )
     fixture = raw.get("fixture", "repo")
     if not (task_dir / fixture).is_dir():
@@ -175,6 +182,6 @@ def _workspace(where: str, task_dir: Path, source: str, raw: Any) -> WorkspaceSp
     setup = raw.get("setup")
     if setup and not (task_dir / setup).is_file():
         raise TaskError(f"{where}: setup script '{setup}' not found next to task.toml")
-    if any(raw.get(k) for k in ("repo", "commit", "url", "tests", "license")):
-        raise TaskError(f"{where}: repo, commit, url, tests and license are only for commit-replay tasks")
+    if any(raw.get(k) for k in ("repo", "commit", "url", "tests", "license", "at")):
+        raise TaskError(f"{where}: repo, commit, url, tests, license and at are only for commit-replay tasks")
     return WorkspaceSpec(fixture=fixture, setup=setup)

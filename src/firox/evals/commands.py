@@ -5,6 +5,7 @@
 - `baseline`: store a run as the reference for its profile(s)
 - `propose`: list commits of a public repository that could become replay tasks
 - `add`: draft a replay task from a commit, verify it, and write it after approval
+- `verify`: check tasks fail as given and pass with their reference solution
 
 `run` and `report` exit with status 1 when they find a regression.
 """
@@ -20,6 +21,7 @@ from rich.markup import escape
 
 import shutil
 import tempfile
+import time
 from dataclasses import asdict
 
 from rich.syntax import Syntax
@@ -337,3 +339,37 @@ def add(
         destination.mkdir(parents=True)
         shutil.copy2(draft_dir / "task.toml", destination / "task.toml")
     console.print(f"written: {destination / 'task.toml'}")
+
+
+@eval_app.command("verify")
+def verify_cmd(
+    suite: Annotated[str | None, typer.Option("--suite", "-s", help="Only tasks with this tag.")] = None,
+    task: Annotated[list[str] | None, typer.Option("--task", "-t", help="Only this task id (repeatable).")] = None,
+    tasks_dir: Annotated[Path, typer.Option(help="Folder with the eval tasks.")] = TASKS_DIR,
+) -> None:
+    """Check that every task fails as given and passes with its reference solution (no model involved)."""
+    console = Console(highlight=False)
+    try:
+        tasks = load_tasks(tasks_dir, tag=suite, ids=task or None)
+    except TaskError as e:
+        console.print(f"[red]{escape(str(e))}[/]")
+        raise typer.Exit(1) from None
+    bad = 0
+    for t in tasks:
+        started = time.monotonic()
+        try:
+            result = verify(t)
+            if result.ok:
+                status = "[green]ok[/]"
+            else:
+                bad += 1
+                status = "[red]passes without work[/]" if not result.fails_as_given else "[red]fails with its solution[/]"
+                for check in result.with_solution:
+                    if not check.passed:
+                        status += f"\n    [dim]{escape(check.reason.splitlines()[0])}[/]"
+        except Exception as e:  # a broken task must not stop the others
+            bad += 1
+            status = f"[red]error: {escape(str(e).splitlines()[0][:150])}[/]"
+        console.print(f"{t.id:<60} {time.monotonic() - started:5.1f}s  {status}")
+    console.print(f"\n{len(tasks) - bad}/{len(tasks)} tasks verified")
+    raise typer.Exit(1 if bad else 0)

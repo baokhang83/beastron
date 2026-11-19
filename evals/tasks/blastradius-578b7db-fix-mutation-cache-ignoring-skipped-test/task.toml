@@ -1,0 +1,28 @@
+# Replays https://github.com/baokhang83/blastradius/commit/578b7dba1dde3eef58b90f3fb179f81ea71b9554
+# Only the public commit is referenced; no code from the repository is stored here.
+prompt = "Fix mutation cache ignoring --skipped-tests.\n\nMutationCache keyed phase-2 experiments on the mutant's identity alone,\ndeliberately excluding config like --max-mutations-per-pair since that\nonly changes which candidates are generated. --skipped-tests was\nexcluded the same way, but it changes which tests actually run in the\nmutant's build, so a cached experiment from one skip config was\nsilently served under a different one, making --skipped-tests appear\nto stop applying in phase 2 once entries existed on disk.\n\nThe tests in blastradius-validator/src/test/java/io/github/baokhang83/blastradius/validator/mutation/MutationCacheTest.java describe what's expected. Make them pass without changing them. Check with: mvn -o -q -pl blastradius-validator -am test -Dtest=MutationCacheTest -Dsurefire.failIfNoSpecifiedTests=false"
+category = "fix"
+language = "java"
+source = "commit-replay"
+timeout = 1200
+tags = ["replay"]
+
+[workspace]
+url = "https://github.com/baokhang83/blastradius"
+commit = "578b7dba1dde3eef58b90f3fb179f81ea71b9554"
+repo = "~/Documents/blastradius"
+tests = ["blastradius-validator/src/test/java/io/github/baokhang83/blastradius/validator/mutation/MutationCacheTest.java"]
+license = "Apache-2.0"
+
+[[checks]]
+type = "command"
+run = "mvn -o -q -pl blastradius-validator -am test -Dtest=MutationCacheTest -Dsurefire.failIfNoSpecifiedTests=false"
+timeout = 900
+
+[[checks]]
+type = "unchanged"
+paths = ["blastradius-validator/src/test/java/io/github/baokhang83/blastradius/validator/mutation/MutationCacheTest.java"]
+
+[[checks]]
+type = "only_changed"
+paths = ["blastradius-validator/src/main/java/io/github/baokhang83/blastradius/validator/cli/RunCommand.java", "blastradius-validator/src/main/java/io/github/baokhang83/blastradius/validator/mutation/MutationCache.java"]

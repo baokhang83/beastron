@@ -1,0 +1,20 @@
+prompt = "In blastradius, what is a would-miss, and how is it measured?"
+category = "explain"
+language = "java"
+source = "commit-replay"
+timeout = 600
+tags = ["full", "repo-question"]
+
+[workspace]
+url = "https://github.com/baokhang83/blastradius"
+commit = "942ad8bd45a59068bc94b7a20085cb33b88ffabb"
+repo = "~/Documents/blastradius"
+license = "Apache-2.0"
+at = "commit"
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["would.?miss", "regression|mutant|mutation|bug", "skip|not (run|select)|chose not|wouldn'?t run", "replay|historical|history"]
+
+[[checks]]
+type = "no_changes"

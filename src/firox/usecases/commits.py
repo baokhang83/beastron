@@ -93,7 +93,10 @@ def github_repo(owner: str, name: str) -> dict:
     """Repository metadata from the GitHub API, through the gh command line."""
     if not shutil.which("gh"):
         raise MinerError("the GitHub CLI (gh) is needed to check that a repository is public")
-    proc = subprocess.run(["gh", "api", f"repos/{owner}/{name}"], capture_output=True, text=True, timeout=30)
+    try:
+        proc = subprocess.run(["gh", "api", f"repos/{owner}/{name}"], capture_output=True, text=True, timeout=30)
+    except subprocess.TimeoutExpired:
+        raise MinerError(f"GitHub didn't answer about {owner}/{name} within 30 s; try again") from None
     if proc.returncode != 0:
         raise MinerError(f"can't read {owner}/{name} from GitHub: {proc.stderr.strip()[:200]}")
     return json.loads(proc.stdout)
@@ -158,7 +161,7 @@ def draft_toml(info: RepoInfo, c: Candidate, *, category: str | None = None, pro
     if prompt is None:
         title = _CONVENTIONAL.sub("", c.subject).strip()
         title = title[:1].upper() + title[1:]
-        details = c.body.split("\n\n")[0].strip()
+        details = _without_trailers(c.body).split("\n\n")[0].strip()
         prompt = title.rstrip(".") + "." + (f"\n\n{details}" if details else "")
         prompt += (f"\n\nThe tests in {', '.join(c.tests)} describe what's expected. Make them pass without "
                    f"changing them. Check with: {command}")
@@ -193,6 +196,14 @@ def draft_toml(info: RepoInfo, c: Candidate, *, category: str | None = None, pro
         f"paths = {json.dumps(c.sources)}",
     ]
     return "\n".join(lines) + "\n"
+
+
+_TRAILER = re.compile(r"^[A-Za-z][A-Za-z-]*: .+$")
+
+
+def _without_trailers(body: str) -> str:
+    """Drop git trailers ("Co-authored-by: ...", "Signed-off-by: ...") from a commit message body."""
+    return "\n".join(line for line in body.splitlines() if not _TRAILER.match(line.strip())).strip()
 
 
 def _language(repo: Path) -> str:
