@@ -1,0 +1,20 @@
+prompt = "How does arch-metrics-mcp find the dependencies between a project's packages, and what does the project need before it can be analyzed?"
+category = "explain"
+language = "java"
+source = "commit-replay"
+timeout = 600
+tags = ["full", "repo-question"]
+
+[workspace]
+url = "https://github.com/baokhang83/arch-metrics-mcp"
+commit = "d5101eb26b75c7062f0b66a0c3e15610ec880645"
+repo = "~/Documents/arch-metrics-mcp"
+license = "Apache-2.0"
+at = "commit"
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["bytecode|\\.class\\b|compiled", "\\bASM\\b", "target/classes", "PROJECT_ROOT|mvn compile|compile (the|it|your)"]
+
+[[checks]]
+type = "no_changes"

@@ -85,17 +85,17 @@ Compared with the baseline, the report flags:
 
 ## The suite
 
-46 tasks, composed after the owner's real usage (see [usecases.md](usecases.md)): every category has at least 2 tasks, and most are Java, like most of the owner's work.
+57 tasks, composed after the owner's real usage (see [usecases.md](usecases.md)): every category has at least 2 tasks, and 40 of the 57 (70%) are Java. Java is about 91% of the owner's work; the generic git and docs tasks stay in small Python fixtures.
 
 | category | tasks | share of real usage |
 |---|---:|---:|
-| fix | 9 | 8.7% |
-| explain | 9 | 29.1% |
-| feature | 8 | 24.5% |
-| git | 6 | 17.8% |
-| build | 3 | 6.0% |
-| docs | 3 | 9.4% |
-| config, refactor, remove, tests | 2 each | 4.4% together |
+| explain | 13 | 28.9% |
+| feature | 13 | 23.8% |
+| git | 7 | 16.2% |
+| fix | 9 | 10.1% |
+| docs | 4 | 9.5% |
+| build | 3 | 6.2% |
+| config, refactor, remove, tests | 2 each | 5.2% together |
 
 The score weights categories by their share of real usage, so fix tasks (many, because commit replays are mostly fixes) count for less than explain or feature tasks.
 
@@ -106,10 +106,13 @@ The score weights categories by their share of real usage, so fix tasks (many, b
 
 **Where the tasks come from** (`tags`):
 - `seed` (8): synthetic tasks for the failure types seen while building firox (see below)
-- `replay` (13): commits from the owner's public repositories (blastradius, mnemo-jvm-warden, blastradius-cache-warmer, mnemo-warmup), replayed from their parent with their tests in place
-- `repo-question` (5): questions about those repositories at a pinned commit, checked for the facts the answer must contain
+- `replay` (18): commits on the main branch of the owner's public repositories (blastradius, mnemo-jvm-warden, blastradius-cache-warmer, mnemo-warmup), replayed from their parent with their tests in place
+- `repo-question` (8): questions about those repositories and arch-metrics-mcp at a pinned commit, checked for the facts the answer must contain
 - the rest: synthetic tasks for git, docs, build, remove, refactor, tests and config work
 - `quick` (12): the fast subset for checking a change before merging; `full`: everything
+
+**Refits** (see [docs/refitting.md](../docs/refitting.md)):
+- 2026-11-19, more Java. 5 feature replays, 4 repository questions and Java git, docs and explain tasks were added, and the remove, refactor and tests tasks were rewritten as Maven projects (46 → 57 tasks, Java 54% → 70%). The classifier rules were fixed first: a fresh hand check had found only 7/20 agreements, and after the fix another fresh sample gave 16/20.
 
 **Verifying the suite:** `firox eval verify` checks every task (or `-s`/`-t` a subset) with no model involved: it must fail as given and pass with its reference solution. Reference solutions:
 - a replayed commit: the commit itself

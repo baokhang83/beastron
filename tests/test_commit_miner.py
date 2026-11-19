@@ -23,12 +23,14 @@ def git(cwd, *args):
     return subprocess.run(["git", "-C", str(cwd), *args], check=True, capture_output=True, text=True, env=GIT_ENV).stdout.strip()
 
 
-def commit(repo, message, files):
+def commit(repo, message, files, publish=True):
     for path, content in files.items():
         (repo / path).parent.mkdir(parents=True, exist_ok=True)
         (repo / path).write_text(content)
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", message)
+    if publish:  # as if pushed: the miner only looks at the published default branch
+        git(repo, "update-ref", "refs/remotes/origin/main", "HEAD")
     return git(repo, "rev-parse", "HEAD")
 
 
@@ -184,3 +186,36 @@ def test_a_renamed_test_file_gets_its_real_new_path(repo):
     [candidate] = [c for c in commits.candidates(repo) if c.sha == sha]
     assert candidate.tests == ["tests/test_totals.py"]  # not "tests/{test_cart.py => test_totals.py}"
     assert "tests/test_cart.py" in candidate.deleted
+
+
+def test_only_commits_on_the_published_branch_are_candidates(repo, public, tmp_path):
+    git(repo, "checkout", "-q", "-b", "work")
+    local = commit(repo, "fix: round the total", {
+        "cart.py": "def total(prices, discount=0):\n    return round(sum(prices) * (100 - discount) / 100)\n",
+        "tests/test_round.py": "from cart import total\n\n\ndef test_round():\n    assert total([3], discount=50) == 2\n",
+    }, publish=False)
+    assert local not in [c.sha for c in commits.candidates(repo)]
+    tasks = tmp_path / "tasks"
+    result = CliRunner().invoke(app, ["eval", "add", "--repo", str(repo), "--commit", local, "--tasks-dir", str(tasks)])
+    assert result.exit_code == 1 and "isn't on origin/main" in result.output
+    assert not tasks.exists()
+
+
+def test_a_clone_without_a_fetched_origin_is_refused(tmp_path):
+    bare = tmp_path / "bare"
+    bare.mkdir()
+    git(bare, "init", "-q", "-b", "main")
+    with pytest.raises(commits.MinerError, match="git fetch origin"):
+        commits.candidates(bare)
+
+
+def test_tests_no_build_tool_here_can_run_are_not_candidates(repo):
+    (repo / "pom.xml").write_text("<project/>")
+    commit(repo, "Add the Maven build", {"pom.xml": "<project/>"})
+    go = commit(repo, "feat: a native launcher", {
+        "launcher/main.go": "package main\n\nfunc main() {}\n",
+        "launcher/main_test.go": "package main\n\nimport \"testing\"\n\nfunc TestMain(t *testing.T) {}\n",
+    })
+    assert go not in [c.sha for c in commits.candidates(repo)]
+    with pytest.raises(commits.MinerError, match=r"\.go"):
+        commits.test_command(repo, ["launcher/main_test.go"])

@@ -1,0 +1,13 @@
+prompt = "In production, how long does the shop wait for the payment provider before it times out, and where does that value come from?"
+category = "explain"
+language = "java"
+source = "synthetic"
+timeout = 300
+tags = ["full"]
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["\\b12\\b", "application-prod\\.properties", "APP_PROFILE|deployment\\.yaml"]
+
+[[checks]]
+type = "no_changes"

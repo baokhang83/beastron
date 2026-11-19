@@ -1,0 +1,1 @@
+12 seconds. Config loads application.properties (5 s), then the profile's file: the Kubernetes deployment (k8s/deployment.yaml) sets APP_PROFILE=prod, so application-prod.properties sets payment.timeout.seconds=12. PAYMENT_TIMEOUT_SECONDS would override it, but the deployment doesn't set it.

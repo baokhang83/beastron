@@ -1,0 +1,20 @@
+prompt = "How do I add blastradius to a Maven project, and what does CI have to keep between runs so that it can select tests?"
+category = "explain"
+language = "java"
+source = "commit-replay"
+timeout = 600
+tags = ["full", "repo-question"]
+
+[workspace]
+url = "https://github.com/baokhang83/blastradius"
+commit = "eeb04af1649bc284e41963fbd4b8be7eefc9af43"
+repo = "~/Documents/blastradius"
+license = "Apache-2.0"
+at = "commit"
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["blastradius-maven-plugin", "baseRef", "\\.blastradius"]
+
+[[checks]]
+type = "no_changes"

@@ -24,6 +24,7 @@ from ..evals.task import CATEGORIES
 from .requests import Request
 
 UNWEIGHTED = ("followup", "meta")
+GIT_WINDOW = 300  # characters of a request in which git words are counted
 EDIT_TOOLS = {"Edit", "Write", "MultiEdit", "NotebookEdit", "apply_patch"}
 READ_TOOLS = {"Read", "Grep", "Glob", "LS", "WebFetch", "WebSearch", "web__run"}
 
@@ -31,8 +32,9 @@ READ_TOOLS = {"Read", "Grep", "Glob", "LS", "WebFetch", "WebSearch", "web__run"}
 _FOLLOWUP = re.compile(
     r"^\s*(yes|yep|yeah|yup|ok(ay)?|sure|great|good|nice|perfect|thanks?( you)?|thx|cool|continue|go( on| ahead)?|"
     r"next\??|done|i do|do it|makes sense|agreed|right|correct|exactly|lgtm|fine|merged|all good|confirm(ed)?|"
-    r"(ok[, ]*)?(run|do|start) the next( one)?|#?\d+ (is )?merged( btw)?|#?\d+ it is( then)?|#\d+ (ok|done|yes))"
-    r"[\s!.,]*(\w+[\s!.,]*){0,2}$",
+    r"(ok[, ]*)?(run|do|start) the next( one)?|(pr )?#?\d+ (is )?(now )?merged( btw)?|#?\d+ it is( then)?|"
+    r"#\d+ (ok|done|yes)|\d{1,2}[.)]?)"
+    r"[\s!.,]*(#?\w+[\s!.,]*){0,2}$",
     re.IGNORECASE,
 )
 # "can you delete X?" asks for an action, unless it asks to explain something.
@@ -54,13 +56,14 @@ RULES: list[tuple[str, re.Pattern[str]]] = [
     ("remove", re.compile(r"\b(remove|delete|revert|undo|get rid of|drop|uninstall|strip out)\b", re.IGNORECASE)),
     ("tests", re.compile(r"\b((write|add|create|more|missing|unit|integration) tests?|test coverage|tests? for)\b", re.IGNORECASE)),
     ("fix", re.compile(r"\b(fix\w*|bugs?|errors?|fail\w*|broken|crash\w*|exceptions?|traceback|stuck|stucks|"
-                       r"doesn'?t work|not working|wrong|regression|issue with)\b", re.IGNORECASE)),
+                       r"doesn'?t work|not working|wrong|regression|issue with|"
+                       r"(isn'?t|aren'?t|not|doesn'?t|don'?t|won'?t) (show|work|load|display|render|start|open|pass)\w*)\b", re.IGNORECASE)),
     ("docs", re.compile(r"\b(readme|docs?|documentation|changelog|llms\.txt|blog|article|linkedin|post(ed)?|reply|"
                         r"tweet|wording|rephrase|sentence|description|write-?up|plan\.md|slack)\b", re.IGNORECASE)),
     ("build", re.compile(r"\b(ci|pipelines?|github actions?|workflows?|maven|mvn|gradle|compile\w*|builds?|"
                          r"dependenc\w+|artifacts?|artefacts?|publish\w*|jar|benchmarks?|cache)\b", re.IGNORECASE)),
     ("config", re.compile(r"\b(config\w*|settings?|install\w*|set ?up|docker|kubernetes|k8s|helm|deploy\w*|"
-                          r"env(ironment)? var\w*|process(es)?|terminate|kill|license)\b", re.IGNORECASE)),
+                          r"env(ironment)? var\w*|processes|terminate|kill|license|gpg|ssh keys?|credentials|creds)\b", re.IGNORECASE)),
     ("refactor", re.compile(r"\b(refactor\w*|rename\w*|clean ?up|restructur\w*|simplif\w*|extract|reorgani[sz]e)\b",
                             re.IGNORECASE)),
     ("feature", re.compile(r"\b(add|implement|create|build me|support|new|make|enhance|improve|extend|want|"
@@ -68,6 +71,16 @@ RULES: list[tuple[str, re.Pattern[str]]] = [
 ]
 GIT = re.compile(r"\b(pull requests?|prs?|push(ed)?|merge[ds]?|commits?|rebase|cherry-pick|branch(es)?|releases?|"
                  r"tags?|git|gh|milestones?|issues?)\b", re.IGNORECASE)
+# "work through milestone M1", "implement the open issues", "$skill:feature T8": building features
+_DRIVE = re.compile(
+    r"[$/][\w-]+:feature\b|\b(work through|implement|repeat the same process|same process)\b[^.]*\b(milestones?|issues?|M\d+)\b",
+    re.IGNORECASE,
+)
+# "create a PR", "open a new branch": git, although "create" and "new" are feature words
+_CREATE_GIT = re.compile(
+    r"\b(create|open|make|raise)\b( (a|an|the|new|separate|another|draft|\d+))*\s+(pull requests?|prs?|tags?|releases?|branch(es)?)\b",
+    re.IGNORECASE,
+)
 _ACK_START = re.compile(r"^\s*(ok(ay)?|yes|yeah|great|good|done|alright|so|fine|cool|all right|right)\b[\s,!.]*", re.IGNORECASE)
 _META = re.compile(r"^\s*/?(exit|quit|clear|stop|bye|hello|hi|hey)[\s!.?]*$", re.IGNORECASE)
 
@@ -92,8 +105,9 @@ def classify(request: Request) -> Classified:
         return Classified(request, "followup", "short continuation")
 
     plain = _URL.sub(" ", text)  # words inside links aren't keywords
-    matches = [category for category, pattern in RULES if pattern.search(plain)]
-    git_hits = len(GIT.findall(plain))
+    matches = [category for category, pattern in RULES if pattern.search(_CREATE_GIT.sub(" ", plain))]
+    # a pasted log (CI output, a stack trace) is full of git words; count them in the request itself
+    git_hits = len(GIT.findall(plain[:GIT_WINDOW]))
     mentions_git = git_hits > 0
     is_question = (plain.rstrip().endswith("?") or bool(_QUESTION_START.match(plain))) and not _POLITE_REQUEST.match(plain)
     if is_question and edits == 0:
@@ -103,6 +117,8 @@ def classify(request: Request) -> Classified:
             return Classified(request, "git", "short question about git")
         return Classified(request, "explain", "question, no edits in response")
 
+    if _DRIVE.search(plain):
+        return Classified(request, "feature", "working through issues or a feature skill")
     if git_hits >= 2 and git_hits > len(matches):
         return Classified(request, "git", "mostly git (several git actions)")
     if matches:

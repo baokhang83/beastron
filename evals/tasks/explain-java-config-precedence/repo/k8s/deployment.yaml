@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop
+spec:
+  template:
+    spec:
+      containers:
+        - name: shop
+          image: shop:3.2
+          env:
+            - name: APP_PROFILE
+              value: prod
+            - name: JAVA_OPTS
+              value: "-Xmx512m"

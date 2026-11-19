@@ -1,0 +1,20 @@
+prompt = "When mnemo-jvm-warden shrinks a pod, in what order does it change the JVM and the pod's resources, and why does that order matter?"
+category = "explain"
+language = "java"
+source = "commit-replay"
+timeout = 600
+tags = ["full", "repo-question"]
+
+[workspace]
+url = "https://github.com/baokhang83/mnemo-jvm-warden"
+commit = "63c1fadfdfdd71da4f0e1e6f5136c39dc91e5dfc"
+repo = "~/Documents/mnemo-jvm-warden"
+license = "Apache-2.0"
+at = "commit"
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["SoftMaxHeapSize|soft max|heap", "\\bRSS\\b|resident", "OOM", "cgroup|resize|limit"]
+
+[[checks]]
+type = "no_changes"

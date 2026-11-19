@@ -48,6 +48,24 @@ EDIT = {"Edit": 1}
     # no keyword: what the agent did decides
     ("the thing from yesterday, the same way as before please", EDIT, None, "feature"),
     ("the thing from yesterday, the same way as before please", None, {"git": 2, "gh": 1}, "git"),
+    # status replies and numbered answers
+    ("PR #12 is now merged", None, None, "followup"),
+    ("merged. next #7", None, None, "followup"),
+    ("2", EDIT, None, "followup"),
+    # driving an agent through issues, or a feature skill, builds features
+    ("work through the milestone issues one at a time, open a PR for each, merge after CI", None, {"gh": 9}, "feature"),
+    ("now the same process on M2, with a /loop", EDIT, None, "feature"),
+    ("now do $someskill:feature T3", EDIT, None, "feature"),
+    # creating a PR or a branch is git work
+    ("create a new PR", None, {"gh": 1}, "git"),
+    ("open the PRs following the template", None, {"gh": 2}, "git"),
+    ("implement the export and create a PR", EDIT, None, "feature"),
+    # git words in a pasted log don't count
+    ("this CI job failed: " + "2026-07-26T08:19:15Z Current runner version: 2.336.0\n" * 8
+     + "git checkout of branch main at commit abc, merge ref, fetching tags\n" * 3, None, None, "fix"),
+    ("the icons aren't showing on the page", EDIT, None, "fix"),
+    ("how to make a new GPG key? walk me through it", None, None, "explain"),
+    ("walk me through making a new GPG key", None, None, "config"),
 ])
 def test_rules(text, tools, shell, expected):
     assert classify(req(text, tools, shell)).category == expected
