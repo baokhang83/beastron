@@ -195,9 +195,11 @@ def _progress(console: Console, total: int):
 def _finish(console: Console, run_dir: Path, results: list[RunResult], *, save: bool, results_dir: Path,
             baselines_dir: Path) -> int:
     """Summarize, compare with the baseline and save; the exit code (1 if anything regressed)."""
-    passed = sum(r.passed for r in results)
-    console.print(f"\n{passed}/{len(results)} runs passed · raw results: {run_dir / 'results.jsonl'}")
-    summaries = summarize([asdict(r) for r in results], run_id=run_dir.name, weights=load_weights())
+    # the whole run folder, not only this invocation: a resumed run continues earlier results
+    rows = load_results(run_dir)
+    passed = sum(bool(r["passed"]) for r in rows)
+    console.print(f"\n{passed}/{len(rows)} runs passed · raw results: {run_dir / 'results.jsonl'}")
+    summaries = summarize(rows, run_id=run_dir.name, weights=load_weights())
     regressed = _report(console, summaries, baselines_dir)
     if save:
         for summary in summaries:
