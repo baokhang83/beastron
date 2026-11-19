@@ -4,7 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from ..events import Preview
+from ..events import FileChange, Preview
 
 Args = dict[str, Any]
 
@@ -19,6 +19,7 @@ class ToolResult:
     summary: str  # one short line for the UI
     ok: bool = True
     denied: bool = False  # the user said no at the approval prompt
+    change: FileChange | None = None  # set by tools that change a file
 
 
 @dataclass(frozen=True)
