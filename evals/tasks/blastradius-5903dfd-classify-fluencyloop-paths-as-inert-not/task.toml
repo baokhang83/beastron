@@ -1,0 +1,28 @@
+# Replays https://github.com/baokhang83/blastradius/commit/5903dfd1de08a2ab9591bdb3d8c3c8c26121fce8
+# Only the public commit is referenced; no code from the repository is stored here.
+prompt = "Classify .fluencyloop/ paths as inert, not NON_SOURCE.\n\n.fluencyloop/state.json (FluencyLoop's own branch/stage bookkeeping)\nlives outside docs/ and has no recognized doc extension, so it fell\nthrough ChangedFileClassifier's allowlist to NON_SOURCE and forced a\nfull-suite fallback on every module in the build. Found on PR #140's\nown CI run: 90/90, 6/6, 62/62, and 79/79 tests all fell back with zero\ndependency-matched, purely because that PR's diff included an updated\n.fluencyloop/state.json.\n\nThe tests in blastradius-core/src/test/java/io/github/baokhang83/blastradius/core/git/ChangedFileClassifierTest.java describe what's expected. Make them pass without changing them. Check with: mvn -o -q -pl blastradius-core -am test -Dtest=ChangedFileClassifierTest -Dsurefire.failIfNoSpecifiedTests=false"
+category = "fix"
+language = "java"
+source = "commit-replay"
+timeout = 1200
+tags = ["replay"]
+
+[workspace]
+url = "https://github.com/baokhang83/blastradius"
+commit = "5903dfd1de08a2ab9591bdb3d8c3c8c26121fce8"
+repo = "~/Documents/blastradius"
+tests = ["blastradius-core/src/test/java/io/github/baokhang83/blastradius/core/git/ChangedFileClassifierTest.java"]
+license = "Apache-2.0"
+
+[[checks]]
+type = "command"
+run = "mvn -o -q -pl blastradius-core -am test -Dtest=ChangedFileClassifierTest -Dsurefire.failIfNoSpecifiedTests=false"
+timeout = 900
+
+[[checks]]
+type = "unchanged"
+paths = ["blastradius-core/src/test/java/io/github/baokhang83/blastradius/core/git/ChangedFileClassifierTest.java"]
+
+[[checks]]
+type = "only_changed"
+paths = ["blastradius-core/src/main/java/io/github/baokhang83/blastradius/core/git/ChangedFileClassifier.java"]

@@ -1,0 +1,24 @@
+prompt = "Slug.slugify has no tests. Add a JUnit 5 test class for it covering lowercasing, spaces, punctuation, leading or trailing separators, and empty input. Then run them with: mvn -o -q test"
+category = "tests"
+language = "java"
+source = "synthetic"
+timeout = 600
+tags = ["full"]
+
+[[checks]]
+type = "command"
+run = "ls src/test/java/com/example/*Test.java"
+
+[[checks]]
+type = "command"
+run = "mvn -o -q test"
+timeout = 300
+
+[[checks]]
+type = "command"
+run = "python3 - <<'PY'\nimport pathlib, shutil, subprocess, sys, tempfile\nsource = pathlib.Path(\"src/main/java/com/example/Slug.java\")\nsrc = source.read_text()\nmutants = [(\"text.toLowerCase(Locale.ROOT)\", \"text\"), ('return dashed.replaceAll(\"(^-+|-+$)\", \"\");', \"return dashed;\")]\nfor old, new in mutants:\n    assert old in src, old\n    with tempfile.TemporaryDirectory() as tmp:\n        copy = pathlib.Path(tmp, \"project\")\n        shutil.copytree(\".\", copy, ignore=shutil.ignore_patterns(\"target\", \".git\"))\n        (copy / source).write_text(src.replace(old, new, 1))\n        result = subprocess.run([\"mvn\", \"-o\", \"-q\", \"test\"], cwd=copy, capture_output=True)\n        if result.returncode == 0:\n            sys.exit(f\"the tests don't catch an injected bug: {old!r} -> {new!r}\")\nPY"
+timeout = 600
+
+[[checks]]
+type = "unchanged"
+paths = ["src/main"]

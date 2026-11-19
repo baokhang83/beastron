@@ -1,0 +1,48 @@
+prompt = "In docker-compose.yml, publish the api service on host port 8081 instead of 8080 (the container still listens on 8080), and give it the environment variable DATABASE_POOL_SIZE=20. Don't change the db service."
+category = "config"
+language = "other"
+source = "synthetic"
+timeout = 300
+tags = ["full"]
+
+[[checks]]
+type = "contains"
+path = "docker-compose.yml"
+text = "[\"']?8081:8080[\"']?"
+regex = true
+
+[[checks]]
+type = "not_contains"
+path = "docker-compose.yml"
+text = "[\"']?8080:8080[\"']?"
+regex = true
+
+[[checks]]
+type = "contains"
+path = "docker-compose.yml"
+text = "DATABASE_POOL_SIZE\\s*[:=]\\s*[\"']?20\\b"
+regex = true
+
+[[checks]]
+type = "contains"
+path = "docker-compose.yml"
+text = "image: postgres:16"
+
+[[checks]]
+type = "contains"
+path = "docker-compose.yml"
+text = "POSTGRES_DB: shop"
+
+[[checks]]
+type = "contains"
+path = "docker-compose.yml"
+text = "POSTGRES_USER: shop"
+
+[[checks]]
+type = "contains"
+path = "docker-compose.yml"
+text = "DATABASE_URL: postgres://shop@db:5432/shop"
+
+[[checks]]
+type = "only_changed"
+paths = ["docker-compose.yml"]

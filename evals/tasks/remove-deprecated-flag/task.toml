@@ -1,0 +1,43 @@
+prompt = "Remove the deprecated --legacy-mode option everywhere: the code, its tests and the README. Then run the tests with: python3 -m pytest -q"
+category = "remove"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full", "quick"]
+
+[[checks]]
+type = "not_contains"
+path = "cli.py"
+text = "legacy"
+regex = true
+
+[[checks]]
+type = "not_contains"
+path = "report.py"
+text = "legacy"
+regex = true
+
+[[checks]]
+type = "not_contains"
+path = "test_cli.py"
+text = "legacy"
+regex = true
+
+[[checks]]
+type = "not_contains"
+path = "README.md"
+text = "legacy"
+regex = true
+
+[[checks]]
+type = "command"
+run = "python3 -m pytest -q"
+
+[[checks]]
+type = "command"
+run = "python3 cli.py --help > /dev/null"
+
+[[checks]]
+type = "contains"
+path = "test_cli.py"
+text = "def test_report("

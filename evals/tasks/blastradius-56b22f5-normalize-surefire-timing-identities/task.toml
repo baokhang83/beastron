@@ -1,0 +1,28 @@
+# Replays https://github.com/baokhang83/blastradius/commit/56b22f519b1fb5b831e9cf0c22ba9e1c034fa0b1
+# Only the public commit is referenced; no code from the repository is stored here.
+prompt = "Normalize Surefire timing identities.\n\nThe tests in blastradius-maven-plugin/src/test/java/io/github/baokhang83/blastradius/plugin/report/BuildReportPopulationTest.java describe what's expected. Make them pass without changing them. Check with: mvn -o -q -pl blastradius-maven-plugin -am test -Dtest=BuildReportPopulationTest -Dsurefire.failIfNoSpecifiedTests=false"
+category = "feature"
+language = "java"
+source = "commit-replay"
+timeout = 1200
+tags = ["replay"]
+
+[workspace]
+url = "https://github.com/baokhang83/blastradius"
+commit = "56b22f519b1fb5b831e9cf0c22ba9e1c034fa0b1"
+repo = "~/Documents/blastradius"
+tests = ["blastradius-maven-plugin/src/test/java/io/github/baokhang83/blastradius/plugin/report/BuildReportPopulationTest.java"]
+license = "Apache-2.0"
+
+[[checks]]
+type = "command"
+run = "mvn -o -q -pl blastradius-maven-plugin -am test -Dtest=BuildReportPopulationTest -Dsurefire.failIfNoSpecifiedTests=false"
+timeout = 900
+
+[[checks]]
+type = "unchanged"
+paths = ["blastradius-maven-plugin/src/test/java/io/github/baokhang83/blastradius/plugin/report/BuildReportPopulationTest.java"]
+
+[[checks]]
+type = "only_changed"
+paths = ["blastradius-maven-plugin/src/main/java/io/github/baokhang83/blastradius/plugin/report/BuildReport.java"]

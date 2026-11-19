@@ -1,0 +1,13 @@
+prompt = "Where is the HTTP request timeout configured in this service, and what is its default value?"
+category = "explain"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full", "quick"]
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["defaults\\.json", "7\\.5", "SHOP_REQUEST_TIMEOUT"]
+
+[[checks]]
+type = "no_changes"

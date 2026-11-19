@@ -1,0 +1,1 @@
+{"http": {"timeout_seconds": 7.5}, "db": {"pool_size": 10}}

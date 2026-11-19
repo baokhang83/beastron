@@ -78,7 +78,8 @@ def _commit_replay(task: Task, dest: Path) -> PreparedWorkspace:
         raise WorkspaceError(f"{repo} is not a git repository, and the task has no url")
     _run(["git", *SAFE_CONFIG, "clone", "--quiet", *flags, "--no-checkout", source, str(dest)], dest.parent, "git clone")
     target = _git(dest, "rev-parse", "--verify", f"{spec.commit}^{{commit}}")
-    base = _git(dest, "rev-parse", "--verify", f"{target}^")  # fails clearly for a root commit
+    # at = "commit": a question about the repository as it is at that commit
+    base = target if spec.at == "commit" else _git(dest, "rev-parse", "--verify", f"{target}^")  # root: fails clearly
     _run(["git", *SAFE_CONFIG, "-c", "advice.detachedHead=false", "checkout", "--quiet", "--detach", base], dest, "git checkout")
     if _git(dest, "rev-parse", "HEAD") != base:
         raise WorkspaceError(f"workspace for {task.id} is not at {base}")

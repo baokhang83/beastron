@@ -1,0 +1,20 @@
+prompt = "How does blastradius decide which tests to run for a change?"
+category = "explain"
+language = "java"
+source = "commit-replay"
+timeout = 600
+tags = ["full", "repo-question"]
+
+[workspace]
+url = "https://github.com/baokhang83/blastradius"
+commit = "942ad8bd45a59068bc94b7a20085cb33b88ffabb"
+repo = "~/Documents/blastradius"
+license = "Apache-2.0"
+at = "commit"
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["agent", "dependenc", "merge.?base|base.?branch|baseline", "full (test )?(run|suite)|fall.?s? ?back"]
+
+[[checks]]
+type = "no_changes"

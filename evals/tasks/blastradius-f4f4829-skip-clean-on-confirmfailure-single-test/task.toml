@@ -1,0 +1,28 @@
+# Replays https://github.com/baokhang83/blastradius/commit/f4f48298ca15ae227fe345df2b2df5a77dd6f45e
+# Only the public commit is referenced; no code from the repository is stored here.
+prompt = "Skip clean on confirmFailure single-test reruns.\n\nEvery confirmFailure rerun ran `mvn clean test`, wiping and forcing a\nfull recompile of the module (+ its -am dependencies) even though the\ncheckout hasn't changed since the previous rerun. For --fast-ground-truth's\nN+1 confirmation loop against apache/shenyu's ~230-candidate mapper\nsuite, that meant paying a full module rebuild ~230 times over.\n\nThe tests in blastradius-validator/src/test/java/io/github/baokhang83/blastradius/validator/build/MavenBuildRunnerTest.java describe what's expected. Make them pass without changing them. Check with: mvn -o -q -pl blastradius-validator -am test -Dtest=MavenBuildRunnerTest -Dsurefire.failIfNoSpecifiedTests=false"
+category = "feature"
+language = "java"
+source = "commit-replay"
+timeout = 1200
+tags = ["replay"]
+
+[workspace]
+url = "https://github.com/baokhang83/blastradius"
+commit = "f4f48298ca15ae227fe345df2b2df5a77dd6f45e"
+repo = "~/Documents/blastradius"
+tests = ["blastradius-validator/src/test/java/io/github/baokhang83/blastradius/validator/build/MavenBuildRunnerTest.java"]
+license = "Apache-2.0"
+
+[[checks]]
+type = "command"
+run = "mvn -o -q -pl blastradius-validator -am test -Dtest=MavenBuildRunnerTest -Dsurefire.failIfNoSpecifiedTests=false"
+timeout = 900
+
+[[checks]]
+type = "unchanged"
+paths = ["blastradius-validator/src/test/java/io/github/baokhang83/blastradius/validator/build/MavenBuildRunnerTest.java"]
+
+[[checks]]
+type = "only_changed"
+paths = ["blastradius-validator/src/main/java/io/github/baokhang83/blastradius/validator/build/MavenBuildRunner.java"]

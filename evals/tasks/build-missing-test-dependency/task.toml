@@ -1,0 +1,24 @@
+prompt = "The tests don't compile. Fix pom.xml (not the tests). Check with: mvn -o -q test"
+category = "build"
+language = "java"
+source = "synthetic"
+timeout = 600
+tags = ["full"]
+
+[[checks]]
+type = "command"
+run = "mvn -o -q test"
+timeout = 300
+
+[[checks]]
+type = "command"
+run = "mvn -o test | grep -q 'Tests run: 4'"
+timeout = 300
+
+[[checks]]
+type = "unchanged"
+paths = ["src"]
+
+[[checks]]
+type = "only_changed"
+paths = ["pom.xml"]
