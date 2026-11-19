@@ -7,11 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from firox.client import ModelError, ModelReply
-from firox.evals import sandbox
-from firox.evals.runner import run_suite, run_task
-from firox.evals.task import load_task
-from firox.quirks import ToolCall
+from beastron.client import ModelError, ModelReply
+from beastron.evals import sandbox
+from beastron.evals.runner import run_suite, run_task
+from beastron.evals.task import load_task
+from beastron.quirks import ToolCall
 from test_agent import PROFILE, FakeClient
 
 
@@ -44,7 +44,7 @@ def scripted(*replies):
 
 @pytest.fixture
 def run_dir(tmp_path, monkeypatch):
-    monkeypatch.setenv("FIROX_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "state"))
     path = tmp_path / "run"
     (path / "traces").mkdir(parents=True)
     return path
@@ -139,7 +139,7 @@ def test_without_a_sandbox_the_runner_refuses(tmp_path, run_dir, monkeypatch):
 
 
 def test_run_suite_repeats_and_records_the_run(tmp_path, monkeypatch):
-    monkeypatch.setenv("FIROX_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "state"))
     task = make_task(tmp_path)
     run_dir, results = run_suite(
         [task], [PROFILE], repeats=2, use_sandbox=False,
@@ -153,7 +153,7 @@ def test_run_suite_repeats_and_records_the_run(tmp_path, monkeypatch):
 
 @pytest.mark.skipif(not sandbox.available(), reason="sandbox-exec exists only on macOS")
 def test_the_sandbox_blocks_writes_outside_the_workspace(tmp_path, run_dir):
-    outside = Path.home() / f".firox-sandbox-probe-{uuid.uuid4().hex[:8]}"
+    outside = Path.home() / f".beastron-sandbox-probe-{uuid.uuid4().hex[:8]}"
     task = make_task(tmp_path, checks='[[checks]]\ntype = "file_exists"\npath = "inside.txt"\n')
     try:
         result = run_task(

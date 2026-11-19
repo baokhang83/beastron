@@ -2,7 +2,7 @@
 
 A scripted pass and a scripted fail must produce the expected report, and a
 run that turns a pass into a fail must be flagged as a regression, both
-through the library and through the `firox eval` commands.
+through the library and through the `beastron eval` commands.
 """
 
 import functools
@@ -11,10 +11,10 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-import firox.evals.runner as runner
-from firox.cli import app
-from firox.evals.report import compare, summarize
-from firox.evals.task import load_tasks
+import beastron.evals.runner as runner
+from beastron.cli import app
+from beastron.evals.report import compare, summarize
+from beastron.evals.task import load_tasks
 from scripted import ANSWER_WITHOUT_EDITING, EDIT_INSTEAD_OF_ANSWERING, FIX_OFF_BY_ONE, PROFILE, factory
 
 TASKS = Path(__file__).resolve().parents[1] / "evals" / "tasks"
@@ -25,7 +25,7 @@ WORSE = {"tests in test_utils.py fail": FIX_OFF_BY_ONE, "What would it take": ED
 
 @pytest.fixture(autouse=True)
 def isolated_state(tmp_path, monkeypatch):
-    monkeypatch.setenv("FIROX_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "state"))
 
 
 def suite(scripts, repeats=3):
@@ -62,7 +62,7 @@ def test_a_pass_turning_into_a_fail_is_a_regression():
 
 
 def test_the_eval_commands_end_to_end(tmp_path, monkeypatch):
-    """`firox eval run`, `baseline` and `report`, with the scripted model in place of a server."""
+    """`beastron eval run`, `baseline` and `report`, with the scripted model in place of a server."""
     results_dir, baselines_dir = tmp_path / "results", tmp_path / "baselines"
     models = tmp_path / "models.toml"
     models.write_text('[models.scripted]\nbase_url = "http://unused.invalid/v1"\nmodel = "scripted-model"\n')

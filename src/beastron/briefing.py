@@ -1,7 +1,7 @@
-"""Project briefing: documentation firox reads before the model's first step.
+"""Project briefing: documentation beastron reads before the model's first step.
 
 Small models often answer questions about a project from file names alone,
-without opening the README. So firox reads the docs itself when a session
+without opening the README. So beastron reads the docs itself when a session
 starts and puts them in the system prompt:
 
 1. Pick a starting file: AGENTS.md, else README.md, else the most likely
@@ -117,7 +117,7 @@ def build_briefing(ws: Workspace, budget: int) -> Briefing:
     if briefing.files:
         names = ", ".join(f.path for f in briefing.files)
         parts += [
-            f"firox read these project files for you when the session started: {names}. "
+            f"beastron read these project files for you when the session started: {names}. "
             "Their content is below, so you don't need to read them again unless they are cut short.",
             "For questions about the project as a whole, answer from this briefing and read more files "
             "if you need to. Do not guess what the project does from file names.",

@@ -1,10 +1,10 @@
-"""The command line: `firox` keeps working as before, and `firox eval …` exists."""
+"""The command line: `beastron` keeps working as before, and `beastron eval …` exists."""
 
 import pytest
 from typer.testing import CliRunner
 
-import firox.cli as cli
-from firox.agent import Agent
+import beastron.cli as cli
+from beastron.agent import Agent
 
 
 @pytest.fixture
@@ -15,13 +15,13 @@ def config(tmp_path, monkeypatch):
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    monkeypatch.setenv("FIROX_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "state"))
     return path
 
 
 @pytest.fixture
 def calls(monkeypatch):
-    """Record what firox would do, without a model or a terminal."""
+    """Record what beastron would do, without a model or a terminal."""
     seen = {}
 
     def fake_run(self, task):
@@ -74,7 +74,7 @@ def test_eval_lists_its_subcommands():
 
 
 def test_eval_report_without_any_run_says_so(tmp_path, monkeypatch):
-    monkeypatch.setenv("FIROX_STATE_DIR", str(tmp_path / "empty"))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "empty"))
     result = invoke("eval", "report")
     assert result.exit_code == 1
     assert "no eval runs" in result.output

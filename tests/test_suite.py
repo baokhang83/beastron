@@ -3,7 +3,7 @@
 Every task must fail as given and pass with its reference solution (that rules
 out impossible tasks and tasks that pass without any work). Synthetic tasks are
 verified here; tasks built on the owner's repositories need those local clones
-and the Maven cache, so `firox eval verify` checks them on the reference
+and the Maven cache, so `beastron eval verify` checks them on the reference
 machine, and here they only get structural checks (public commit, license, no
 copied code).
 """
@@ -15,8 +15,8 @@ from pathlib import Path
 
 import pytest
 
-from firox.evals.task import CATEGORIES, load_tasks
-from firox.evals.verify import verify
+from beastron.evals.task import CATEGORIES, load_tasks
+from beastron.evals.verify import verify
 
 TASKS = Path(__file__).resolve().parents[1] / "evals" / "tasks"
 ALL = load_tasks(TASKS)

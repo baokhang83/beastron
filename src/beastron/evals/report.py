@@ -1,7 +1,7 @@
 """Summaries, baselines and regression detection for eval runs.
 
 - A **summary** condenses one run (one model profile) into pass counts per
-  task and category, timing, and what was used: the model digest and firox's
+  task and category, timing, and what was used: the model digest and beastron's
   commit. It holds no transcripts, so it can be committed to `evals/results/`;
   the committed summaries are the score's history.
 - A **baseline** is a summary stored as the reference for a profile, in
@@ -16,7 +16,7 @@
   - improvements, and tasks added or removed
 
 The score weights each category's pass rate by how often the owner asks for that
-kind of task (`evals/usecases.json`, from `firox usecases classify --write`).
+kind of task (`evals/usecases.json`, from `beastron usecases classify --write`).
 Categories without a weight, or no weights file at all, fall back to the plain
 average of the category pass rates.
 """
@@ -161,7 +161,7 @@ def _summary(profile: str, runs: list[dict[str, Any]], run_id: str, weights: dic
         "profile": profile,
         "model": runs[0]["model"],
         "model_digests": sorted({r["model_digest"] for r in runs if r.get("model_digest")}),
-        "firox_commit": runs[0].get("firox_commit"),
+        "beastron_commit": runs[0].get("beastron_commit"),
         "sandboxed": all(r.get("sandboxed", True) for r in runs),
         "tasks": dict(sorted(tasks.items())),
         "categories": dict(sorted(categories.items())),
@@ -184,7 +184,7 @@ def _summary(profile: str, runs: list[dict[str, Any]], run_id: str, weights: dic
 def save_summary(summary: dict[str, Any], results_dir: Path = RESULTS_DIR) -> Path:
     results_dir.mkdir(parents=True, exist_ok=True)
     stamp = summary["run_id"].split("_")[0] or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    commit = (summary.get("firox_commit") or "nocommit")[:7]
+    commit = (summary.get("beastron_commit") or "nocommit")[:7]
     path = results_dir / f"{stamp}_{_safe(summary['profile'])}_{commit}.json"
     _write(path, summary)
     return path

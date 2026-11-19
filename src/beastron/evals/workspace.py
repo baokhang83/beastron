@@ -25,8 +25,8 @@ from .task import Task
 SETUP_TIMEOUT = 120
 # Fixed identities and dates, so a setup script builds the same history every time.
 GIT_ENV = {
-    "GIT_AUTHOR_NAME": "firox eval", "GIT_AUTHOR_EMAIL": "eval@firox.invalid",
-    "GIT_COMMITTER_NAME": "firox eval", "GIT_COMMITTER_EMAIL": "eval@firox.invalid",
+    "GIT_AUTHOR_NAME": "beastron eval", "GIT_AUTHOR_EMAIL": "eval@beastron.invalid",
+    "GIT_COMMITTER_NAME": "beastron eval", "GIT_COMMITTER_EMAIL": "eval@beastron.invalid",
     "GIT_AUTHOR_DATE": "2026-01-01T12:00:00Z", "GIT_COMMITTER_DATE": "2026-01-01T12:00:00Z",
     "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
 }
@@ -46,7 +46,7 @@ class PreparedWorkspace:
 @contextmanager
 def prepared(task: Task, *, keep: bool = False) -> Iterator[PreparedWorkspace]:
     """Create the task's workspace in a new temp folder; remove it afterwards unless `keep`."""
-    parent = Path(tempfile.mkdtemp(prefix=f"firox-eval-{task.id}-"))
+    parent = Path(tempfile.mkdtemp(prefix=f"beastron-eval-{task.id}-"))
     try:
         yield create(task, parent / "project")
     finally:

@@ -1,5 +1,5 @@
 [project]
-name = "firox"
+name = "beastron"
 version = "0.1.0"
 description = "A coding agent for local and open-weight models"
 readme = "README.md"
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-firox = "firox.cli:run"
+beastron = "beastron.cli:run"
 
 [build-system]
 requires = ["uv_build>=0.10.6,<0.11.0"]
@@ -27,5 +27,5 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-# firox's own tests only: evals/tasks/ holds test files that belong to the eval tasks' projects
+# beastron's own tests only: evals/tasks/ holds test files that belong to the eval tasks' projects
 testpaths = ["tests"]

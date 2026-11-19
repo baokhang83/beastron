@@ -4,9 +4,9 @@ import textwrap
 
 import pytest
 
-from firox.evals.checks import Check
-from firox.evals.task import TaskError, load_task, load_tasks
-from firox.evals.workspace import WorkspaceError, prepared
+from beastron.evals.checks import Check
+from beastron.evals.task import TaskError, load_task, load_tasks
+from beastron.evals.workspace import WorkspaceError, prepared
 
 GIT_ENV = {
     **os.environ,
@@ -159,7 +159,7 @@ def test_commit_replay_workspace_is_exactly_the_parent_commit(tmp_path, source_r
 def test_commit_replay_refuses_excluded_repositories(tmp_path, source_repo, monkeypatch):
     exclude = tmp_path / "exclude.txt"
     exclude.write_text(f"# never use this one\n{source_repo}\n")
-    monkeypatch.setenv("FIROX_EXCLUDE", str(exclude))
+    monkeypatch.setenv("BEASTRON_EXCLUDE", str(exclude))
     task = replay_task(tmp_path, source_repo, "HEAD")
     with pytest.raises(WorkspaceError, match="exclusion list"):
         with prepared(task):

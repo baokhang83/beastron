@@ -2,7 +2,7 @@
 
 This covers the file tools only. run_shell can do anything your user account
 can, which is why every shell command needs your approval. For full isolation,
-run firox inside a container.
+run beastron inside a container.
 """
 
 from __future__ import annotations
