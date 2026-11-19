@@ -1,0 +1,11 @@
+# Your adjustments to the eval score's category weights. Never overwritten by firox.
+#
+# The weights are measured from your real usage (evals/usecases.json, written by
+# `firox usecases classify --write`). Use this file when the measured mix isn't what you
+# want firox to be judged on. Remove the # to enable a line. See docs/refitting.md.
+
+[multiply]   # scale a measured weight
+# fix = 1.5        # count bug fixes 1.5 times as much as measured
+
+[set]        # or fix a category's share of the score (0 to 1); the others share the rest
+# explain = 0.20
