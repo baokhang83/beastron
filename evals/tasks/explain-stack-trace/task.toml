@@ -1,0 +1,13 @@
+prompt = "A customer's checkout failed with this error. What causes it, and what would fix it?\n\nTraceback (most recent call last):\n  File \"checkout.py\", line 9, in checkout\n    return total_with_tax(order)\n  File \"invoice.py\", line 12, in total_with_tax\n    rate = TAX_RATES[order[\"country\"]]\nKeyError: 'CH'"
+category = "explain"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full"]
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["TAX_RATES|tax rates?", "\\bCH\\b|switzerland|swiss", "missing|no (entry|rate)|not (in|defined|listed|present)|doesn'?t (have|contain|include)"]
+
+[[checks]]
+type = "no_changes"

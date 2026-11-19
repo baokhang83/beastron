@@ -1,0 +1,29 @@
+prompt = "The working tree has an uncommitted fix for the rounding of totals in totals.py. Put it on a new branch named fix/rounding and commit it there with a message that says what it fixes. Leave main as it is."
+category = "git"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full"]
+
+[workspace]
+setup = "setup.sh"
+
+[[checks]]
+type = "command"
+run = "git rev-parse --verify -q refs/heads/fix/rounding"
+
+[[checks]]
+type = "command"
+run = "test \"$(git rev-parse main)\" = \"$(git rev-parse fix/rounding~1)\""
+
+[[checks]]
+type = "command"
+run = "git log -1 --format=%B fix/rounding | grep -qi round"
+
+[[checks]]
+type = "command"
+run = "git show fix/rounding:totals.py | grep -q \"round(sum(amounts), 2)\""
+
+[[checks]]
+type = "command"
+run = "test -z \"$(git status --porcelain)\""

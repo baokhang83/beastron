@@ -1,0 +1,31 @@
+prompt = "Undo the commit that switched prices to USD, but keep everything that was committed after it. Use git, so that the history shows the revert."
+category = "git"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full"]
+
+[workspace]
+setup = "setup.sh"
+
+[[checks]]
+type = "contains"
+path = "currency.py"
+text = "CURRENCY = \"EUR\""
+
+[[checks]]
+type = "contains"
+path = "invoice.py"
+text = "Thank you for your order!"
+
+[[checks]]
+type = "command"
+run = "git log -1 --format=%B | grep -qi revert"
+
+[[checks]]
+type = "command"
+run = "test $(git rev-list --count HEAD) -eq 4"
+
+[[checks]]
+type = "command"
+run = "test -z \"$(git status --porcelain)\""

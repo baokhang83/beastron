@@ -3,7 +3,7 @@ category = "fix"
 language = "java"
 source = "synthetic"
 timeout = 600
-tags = ["seed"]
+tags = ["seed", "quick"]
 
 [[checks]]
 type = "command"

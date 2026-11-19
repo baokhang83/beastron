@@ -1,0 +1,20 @@
+prompt = "How does mnemo-warmup make Java pods start faster?"
+category = "explain"
+language = "java"
+source = "commit-replay"
+timeout = 600
+tags = ["full", "repo-question"]
+
+[workspace]
+url = "https://github.com/baokhang83/mnemo-warmup"
+commit = "4636fea8ad1a04e626bb406910dea29dabd1d2ec"
+repo = "~/Documents/mnemo-warmup"
+license = "Apache-2.0"
+at = "commit"
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["appcds|leyden|\\baot\\b|class data sharing|\\bcds\\b", "cache|archive", "train|once", "annotation|warmup\\.mnemo\\.io"]
+
+[[checks]]
+type = "no_changes"

@@ -1,0 +1,28 @@
+# Replays https://github.com/baokhang83/blastradius-cache-warmer/commit/254b41e8a895b81accb76164ed4c07e72ca6966c
+# Only the public commit is referenced; no code from the repository is stored here.
+prompt = "Use a valid GitHub cache format version.\n\nThe tests in src/test/java/io/github/baokhang83/blastradius/cachewarmer/cache/GitHubActionsSliceStoreTest.java describe what's expected. Make them pass without changing them. Check with: mvn -o -q test -Dtest=GitHubActionsSliceStoreTest -Dsurefire.failIfNoSpecifiedTests=false"
+category = "fix"
+language = "java"
+source = "commit-replay"
+timeout = 1200
+tags = ["replay", "quick"]
+
+[workspace]
+url = "https://github.com/baokhang83/blastradius-cache-warmer"
+commit = "254b41e8a895b81accb76164ed4c07e72ca6966c"
+repo = "~/Documents/blastradius-cache-warmer"
+tests = ["src/test/java/io/github/baokhang83/blastradius/cachewarmer/cache/GitHubActionsSliceStoreTest.java"]
+license = "Apache-2.0"
+
+[[checks]]
+type = "command"
+run = "mvn -o -q test -Dtest=GitHubActionsSliceStoreTest -Dsurefire.failIfNoSpecifiedTests=false"
+timeout = 900
+
+[[checks]]
+type = "unchanged"
+paths = ["src/test/java/io/github/baokhang83/blastradius/cachewarmer/cache/GitHubActionsSliceStoreTest.java"]
+
+[[checks]]
+type = "only_changed"
+paths = ["pom.xml", "src/main/java/io/github/baokhang83/blastradius/cachewarmer/cache/GitHubActionsSliceStore.java"]

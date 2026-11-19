@@ -1,0 +1,20 @@
+prompt = "In mnemo-jvm-warden, what is a Boost, and how does an application use one?"
+category = "explain"
+language = "java"
+source = "commit-replay"
+timeout = 600
+tags = ["full", "repo-question"]
+
+[workspace]
+url = "https://github.com/baokhang83/mnemo-jvm-warden"
+commit = "6e522e184b01577a4f54167fbd68b439d541b6f1"
+repo = "~/Documents/mnemo-jvm-warden"
+license = "Apache-2.0"
+at = "commit"
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["lease", "polic|operator|named", "acquireBoost|WardenBoostClient|boost client"]
+
+[[checks]]
+type = "no_changes"

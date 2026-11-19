@@ -1,0 +1,46 @@
+prompt = "Add a \"Configuration\" section to README.md that lists every environment variable config.py reads, with its default value."
+category = "docs"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full"]
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "^#+\\s*Configuration"
+regex = true
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "APP_PORT"
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "APP_DB_URL"
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "APP_LOG_LEVEL"
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "8080"
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "sqlite:///shop.db"
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "INFO"
+
+[[checks]]
+type = "only_changed"
+paths = ["README.md"]

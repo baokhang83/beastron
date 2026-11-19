@@ -1,0 +1,27 @@
+prompt = "LegacyCsvExporter isn't used anywhere any more. Delete it and its test, and make sure the build still passes: mvn -o -q test"
+category = "remove"
+language = "java"
+source = "synthetic"
+timeout = 600
+tags = ["full"]
+
+[[checks]]
+type = "file_absent"
+path = "src/main/java/com/example/LegacyCsvExporter.java"
+
+[[checks]]
+type = "file_absent"
+path = "src/test/java/com/example/LegacyCsvExporterTest.java"
+
+[[checks]]
+type = "command"
+run = "mvn -o -q test"
+timeout = 300
+
+[[checks]]
+type = "unchanged"
+paths = ["src/main/java/com/example/ReportService.java", "src/test/java/com/example/ReportServiceTest.java"]
+
+[[checks]]
+type = "only_changed"
+paths = ["src/main/java/com/example/LegacyCsvExporter.java", "src/test/java/com/example/LegacyCsvExporterTest.java"]
