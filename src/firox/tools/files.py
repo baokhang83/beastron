@@ -6,8 +6,9 @@ import re
 from collections.abc import Iterator
 from pathlib import Path
 
-from ..events import Preview
+from ..events import FileChange, Preview
 from .base import Args, Tool, ToolError, ToolResult
+from .git import is_tracked
 from .sandbox import Workspace
 
 IGNORED_DIRS = {
@@ -174,11 +175,14 @@ def make_file_tools(ws: Workspace) -> list[Tool]:
     def write_file(args: Args) -> ToolResult:
         path = ws.resolve(args["path"], for_write=True)
         existed = path.exists()
+        old = _read_text(ws, path) if existed else ""
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(args["content"], encoding="utf-8")
         n = len(args["content"].splitlines())
         verb = "Overwrote" if existed else "Created"
-        return ToolResult(f"{verb} {ws.rel(path)} ({n} lines).", f"{verb.lower()} · {n} lines")
+        added, removed = _count_changes(_diff(ws.rel(path), old, args["content"]))
+        change = FileChange(ws.rel(path), "modified" if existed else "created", added, removed)
+        return ToolResult(f"{verb} {ws.rel(path)} ({n} lines).", f"{verb.lower()} · {n} lines", change=change)
 
     def _apply_edit(args: Args) -> tuple[Path, str, str]:
         path = ws.resolve(args["path"], for_write=True)
@@ -217,7 +221,39 @@ def make_file_tools(ws: Workspace) -> list[Tool]:
         path, old, new = _apply_edit(args)
         path.write_text(new, encoding="utf-8")
         added, removed = _count_changes(_diff(ws.rel(path), old, new))
-        return ToolResult(f"Edited {ws.rel(path)}.", f"+{added} -{removed}")
+        change = FileChange(ws.rel(path), "modified", added, removed)
+        return ToolResult(f"Edited {ws.rel(path)}.", f"+{added} -{removed}", change=change)
+
+    def _delete_target(args: Args) -> Path:
+        path = ws.resolve(args["path"], for_write=True)
+        if not path.exists() and not path.is_symlink():
+            raise ToolError(f"File not found: {args['path']}")
+        if path.is_dir() and not path.is_symlink():
+            raise ToolError(f"{args['path']} is a directory. delete_file removes one file at a time.")
+        return path
+
+    def delete_preview(args: Args) -> Preview:
+        path = _delete_target(args)
+        rel = ws.rel(path)
+        tracked = is_tracked(ws, path)
+        if tracked is True:
+            note = "tracked by git: can be restored"
+        elif tracked is False:
+            note = "NOT tracked by git: cannot be restored"
+        else:
+            note = "not in a git repository: cannot be restored"
+        if path.is_symlink() or _is_binary(path):
+            body = f"--- a/{rel}\n+++ /dev/null\n(binary file or link, {path.lstat().st_size} bytes)\n"
+        else:
+            body = _diff(rel, _read_text(ws, path), "")
+        return Preview("diff", f"delete_file {rel} ({note})", body)
+
+    def delete_file(args: Args) -> ToolResult:
+        path = _delete_target(args)
+        rel = ws.rel(path)
+        lines = 0 if path.is_symlink() or _is_binary(path) else len(_read_text(ws, path).splitlines())
+        path.unlink()
+        return ToolResult(f"Deleted {rel}.", f"deleted · {lines} lines", change=FileChange(rel, "deleted", 0, lines))
 
     path_prop = {"type": "string", "description": "Path relative to the project root."}
     return [
@@ -280,5 +316,12 @@ def make_file_tools(ws: Workspace) -> list[Tool]:
             },
             edit_file,
             preview=edit_preview,
+        ),
+        Tool(
+            "delete_file",
+            "Delete one file. Use this to remove files, for example when undoing a feature that added them.",
+            {"type": "object", "properties": {"path": path_prop}, "required": ["path"]},
+            delete_file,
+            preview=delete_preview,
         ),
     ]

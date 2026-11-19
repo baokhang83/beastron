@@ -182,9 +182,31 @@ class RichUI:
         line.append(label, style=style)
         line.append(" · " + " · ".join(parts), style="dim")
         self.console.print(line)
+        self._change_record(end)
         if limit and used > 0.8 * limit:
             self.console.print(Text("  context is nearly full; /clear starts a fresh conversation", style="yellow"))
         self.console.print()
+
+    def _change_record(self, end: TurnEnd) -> None:
+        """What really changed, from the tools. The model's summary above can be wrong."""
+        letters = {"created": ("A", "green"), "modified": ("M", "yellow"), "deleted": ("D", "red")}
+        if end.changes:
+            self.console.print(Text("   files changed by firox:", style="dim"))
+            for change in end.changes:
+                letter, style = letters[change.kind]
+                line = Text("     ")
+                line.append(letter, style=f"bold {style}")
+                line.append(f" {change.path}")
+                if change.kind != "deleted":
+                    line.append(f"  +{change.added} -{change.removed}", style="dim")
+                self.console.print(line)
+        elif end.reason != "error":
+            self.console.print(Text("   no files changed by firox's file tools", style="dim"))
+        if end.shell_commands:
+            n = end.shell_commands
+            self.console.print(
+                Text(f"   + {n} shell command{'s' if n != 1 else ''}, which may also have changed files", style="dim")
+            )
 
     # ----- approvals -------------------------------------------------------
 
@@ -242,6 +264,8 @@ class RichUI:
 def _arg_summary(name: str, args: dict[str, Any], root: Path | None = None) -> str:
     if name == "run_shell":
         value = args.get("command", "")
+    elif name == "git":
+        value = " ".join(str(v) for v in (args.get("command", ""), args.get("ref"), args.get("path")) if v)
     elif name == "search_code":
         value = repr(args.get("pattern", "")) + (f" in {args['path']}" if args.get("path") else "")
     elif "path" in args:
