@@ -37,8 +37,9 @@ class ModelProfile:
     context: int = 32768
     api_key_env: str | None = None
     temperature: float | None = None
+    # How hard the model thinks. Sent to the server as `reasoning_effort`.
     # "none" turns thinking off on Ollama's Qwen3; "low"/"medium"/"high" where supported.
-    reasoning_effort: str | None = None
+    effort: str | None = None
     quirks: frozenset[str] = frozenset()
     extra_body: dict[str, Any] = field(default_factory=dict)
 
@@ -106,7 +107,7 @@ def _parse_profile(path: Path, name: str, raw: Any) -> ModelProfile:
         raise ConfigError(f"{where}: must be a table.")
     allowed = {
         "base_url", "model", "context", "api_key_env", "temperature",
-        "reasoning_effort", "quirks", "extra_body",
+        "effort", "quirks", "extra_body",
     }
     unknown = set(raw) - allowed
     if unknown:
@@ -125,7 +126,7 @@ def _parse_profile(path: Path, name: str, raw: Any) -> ModelProfile:
         context=int(raw.get("context", 32768)),
         api_key_env=raw.get("api_key_env"),
         temperature=raw.get("temperature"),
-        reasoning_effort=raw.get("reasoning_effort"),
+        effort=raw.get("effort"),
         quirks=quirks,
         extra_body=dict(raw.get("extra_body", {})),
     )

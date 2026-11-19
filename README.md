@@ -38,7 +38,7 @@ context size, plus optional settings:
 
 | Setting | Purpose |
 |---|---|
-| `reasoning_effort` | `"none"` turns thinking off (much faster on Qwen3, weaker on hard tasks) |
+| `effort` | How hard the model thinks; `"none"` turns thinking off (much faster on Qwen3, weaker on hard tasks). Sent to the server as `reasoning_effort`. |
 | `api_key_env` | Environment variable that holds the API key, for hosted providers |
 | `temperature` | Sampling temperature |
 | `quirks` | Per-model fixes, e.g. `["send_reasoning_back"]` for gpt-oss |
