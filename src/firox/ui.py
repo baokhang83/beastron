@@ -16,6 +16,7 @@ from rich.spinner import Spinner
 from rich.syntax import Syntax
 from rich.text import Text
 
+from .briefing import Briefing
 from .config import ModelProfile
 from .events import (
     ApprovalRequest,
@@ -91,7 +92,7 @@ class RichUI:
 
     # ----- header and messages -------------------------------------------
 
-    def header(self, profile: ModelProfile, root: Path) -> None:
+    def header(self, profile: ModelProfile, root: Path, briefing: Briefing | None = None) -> None:
         self.root = root
         line = Text()
         line.append(" firox ", style=f"bold black on {ACCENT}")
@@ -99,8 +100,23 @@ class RichUI:
         line.append(f" ({profile.model})", style="dim")
         line.append(f"  ·  {fmt_path(root)}  ·  ctx {fmt_tokens(profile.context)}", style="dim")
         self.console.print(line)
+        if briefing is not None:
+            self.briefing_line(briefing)
         self.console.print(Text("  /help for commands · Ctrl-C stops the agent · Ctrl-D quits", style="dim"))
         self.console.print()
+
+    def briefing_line(self, briefing: Briefing) -> None:
+        """Which project docs the model was given, so you know what it knows."""
+        if not briefing.files:
+            self.console.print(Text("  briefing: no project documentation found", style="dim"))
+            return
+        names = [f.path + (" (cut)" if f.truncated else "") for f in briefing.files]
+        line = Text("  briefing: ", style="dim")
+        line.append(", ".join(names))
+        line.append(f"  ·  {fmt_tokens(briefing.chars // 4)} tokens", style="dim")
+        if briefing.not_read:
+            line.append(f"  ·  {len(briefing.not_read)} linked docs didn't fit", style="dim")
+        self.console.print(line)
 
     def info(self, message: str) -> None:
         self.console.print(Text(f"  {message}", style="dim"))

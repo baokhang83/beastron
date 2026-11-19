@@ -48,6 +48,9 @@ def main(
     config: Annotated[Path | None, typer.Option("--config", "-c", help="Path to models.toml.")] = None,
     max_steps: Annotated[int, typer.Option(help="Maximum model calls per task.")] = 25,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show reasoning and full tool output.")] = False,
+    briefing: Annotated[
+        bool, typer.Option("--briefing/--no-briefing", help="Read the project's docs (AGENTS.md, README.md, ...) at startup.")
+    ] = True,
 ) -> None:
     """firox: a coding agent for local and open-weight models."""
     ui = RichUI(verbose=verbose)
@@ -60,8 +63,11 @@ def main(
         raise typer.Exit(1) from None
 
     ws = Workspace(Path.cwd())
-    agent = Agent(client, ws, make_tools(ws), on_event=ui.handle, approve=ui.approve, max_steps=max_steps)
-    ui.header(profile, ws.root)
+    agent = Agent(
+        client, ws, make_tools(ws), on_event=ui.handle, approve=ui.approve,
+        max_steps=max_steps, briefing=briefing,
+    )
+    ui.header(profile, ws.root, agent.briefing if briefing else None)
 
     if task:
         reason = agent.run(task)
@@ -122,6 +128,8 @@ def _command(line: str, agent: Agent, ui: RichUI, cfg: Config) -> str | None:
         agent.reset()
         ui.context = (0, agent.client.profile.context)
         ui.info("started a fresh conversation")
+        if agent.use_briefing:
+            ui.briefing_line(agent.briefing)
     elif cmd == "/context":
         used, limit = agent.context_used, agent.client.profile.context
         pct = 100 * used / limit if limit else 0
