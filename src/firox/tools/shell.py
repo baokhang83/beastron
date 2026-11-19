@@ -27,16 +27,18 @@ def _last_line(text: str) -> str:
     return ""
 
 
-def make_shell_tool(ws: Workspace) -> Tool:
+def make_shell_tool(ws: Workspace, prefix: list[str] | None = None) -> Tool:
+    """`prefix`, if given, wraps every command, e.g. in a sandbox: prefix + ["/bin/sh", "-c", command]."""
     def preview(args: Args) -> Preview:
         return Preview("command", f"run_shell in {ws.root}", args["command"])
 
     def run_shell(args: Args) -> ToolResult:
         timeout = min(max(1, args.get("timeout") or DEFAULT_TIMEOUT), MAX_TIMEOUT)
         try:
+            command = [*prefix, "/bin/sh", "-c", args["command"]] if prefix else args["command"]
             proc = subprocess.run(
-                args["command"],
-                shell=True,
+                command,
+                shell=not prefix,
                 cwd=ws.root,
                 capture_output=True,
                 text=True,
