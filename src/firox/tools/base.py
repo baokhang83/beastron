@@ -18,6 +18,7 @@ class ToolResult:
     output: str  # what the model sees
     summary: str  # one short line for the UI
     ok: bool = True
+    denied: bool = False  # the user said no at the approval prompt
 
 
 @dataclass(frozen=True)

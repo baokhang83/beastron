@@ -81,6 +81,30 @@ def test_edit_file_rejects_missing_and_ambiguous_text(tools, ws):
         edit.preview({"path": "dup.py", "old_text": "x = 1", "new_text": "x = 2"})
 
 
+def test_edit_not_found_shows_closest_text(tools, ws):
+    (ws.root / "ui.py").write_text(
+        "class UI:\n"
+        "    def header(self):\n"
+        "        line = Text()\n"
+        "        line.append(' firox ', style='bold')\n"
+        "        return line\n"
+    )
+    # wrong indentation and a slightly different string, as small models produce
+    wrong = "line = Text()\nline.append(' firox ', style='bold cyan')"
+    with pytest.raises(ToolError) as err:
+        tools["edit_file"].preview({"path": "ui.py", "old_text": wrong, "new_text": "x"})
+    message = str(err.value)
+    assert "closest text in the file is lines 3-4" in message
+    assert "        line.append(' firox ', style='bold')" in message  # real indentation shown
+
+
+def test_edit_not_found_without_a_close_match(tools):
+    with pytest.raises(ToolError) as err:
+        tools["edit_file"].preview({"path": "src/app.py", "old_text": "completely unrelated text here", "new_text": "x"})
+    assert "closest" not in str(err.value)
+    assert "Read the file again" in str(err.value)
+
+
 def test_write_file_creates_parent_dirs(tools, ws):
     tools["write_file"].run({"path": "new/dir/hello.py", "content": "print('hi')\n"})
     assert (ws.root / "new/dir/hello.py").read_text() == "print('hi')\n"

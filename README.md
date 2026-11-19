@@ -11,22 +11,40 @@ you can switch models with one setting.
 GGML_METAL_TENSOR_DISABLE=1 OLLAMA_CONTEXT_LENGTH=32768 ollama serve
 ollama pull qwen3:8b
 
-# 2. Firox
-uv sync
+# 2. Install firox as a command you can run from any folder.
+#    --editable: changes to the code here apply immediately, no reinstall needed.
+uv tool install --editable ~/Documents/firox
+
+# 3. Make models.toml available from any folder (a link, so there's still one file to edit).
+mkdir -p ~/.config/firox
+ln -s ~/Documents/firox/models.toml ~/.config/firox/models.toml
 ```
+
+uv puts the `firox` command in `~/.local/bin`. If your shell can't find it,
+run `uv tool update-shell` and open a new terminal.
+
+After changing firox's dependencies in `pyproject.toml`, reinstall once with
+`uv tool install --editable --force ~/Documents/firox`. Code changes need nothing.
 
 ## Usage
 
+Run firox from the folder of the project you want it to work on. That folder
+is the only place its file tools can read and write.
+
 ```bash
-uv run firox                                  # interactive session
-uv run firox "fix the failing test"           # one task, then exit
-uv run firox -m qwen3-8b-fast                 # pick a model profile
-uv run firox -v                               # show reasoning and full tool output
+cd ~/Documents/my-project
+firox                                  # interactive session
+firox "fix the failing test"           # one task, then exit
+firox -m qwen3-8b-fast                 # pick a model profile
+firox -v                               # show reasoning and full tool output
 ```
 
-To use firox in another project, run it from that project's folder:
-`uv run --project ~/Documents/firox firox`. It uses `models.toml` from the
-current folder, or `~/.config/firox/models.toml`.
+Use `firox`, not `uv run firox`: inside another project, `uv run` sets up that
+project's environment and won't find firox.
+
+Firox looks for `models.toml` in this order: the `--config` option, the
+`FIROX_CONFIG` environment variable, the current folder, then
+`~/.config/firox/models.toml`.
 
 Commands inside a session: `/help`, `/models`, `/model NAME`, `/clear`,
 `/context`, `/verbose`, `/quit`. Ctrl-C stops the agent; Ctrl-D quits.

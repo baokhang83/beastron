@@ -162,6 +162,7 @@ class RichUI:
     def _turn_summary(self, end: TurnEnd) -> None:
         marks = {
             "done": ("✓ done", "green"),
+            "denied": ("✗ stopped: you denied the action; tell firox what to do instead", "yellow"),
             "max_steps": ("⚠ stopped at the step limit", "yellow"),
             "interrupted": ("✗ interrupted", "yellow"),
             "error": ("✗ failed", "red"),
