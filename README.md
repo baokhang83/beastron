@@ -1,10 +1,10 @@
-<div align="center" style="margin-bottom:-40px;">
-  <img width="300" height="300" alt="beastron_avatar_light" src="https://github.com/user-attachments/assets/93e125af-8527-4d8e-b05b-1b37ca26259e" />
+<div align="center">
+  <img src="docs/assets/beastron-logo2.png" alt="Beastron Mascot" width="260" />
   <h1>Beastron</h1>
 </div>
 
 <div align="center">
-
+  
 <b>How close can a free, local coding agent get to a hosted one on real work?</b>
 
 <p>
