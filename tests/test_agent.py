@@ -190,6 +190,15 @@ def test_changes_reset_each_turn(tmp_path):
     assert events[-1].changes == () and events[-1].shell_commands == 0
 
 
+def test_system_prompt_contains_the_briefing(tmp_path):
+    (tmp_path / "README.md").write_text("FluencyLoop captures the decisions behind each feature.")
+    agent, client, _ = make_agent(tmp_path, [ModelReply(content="ok")])
+    agent.run("what is this project about?")
+    system = client.seen[0][0]["content"]
+    assert "FluencyLoop captures the decisions behind each feature." in system
+    assert [f.path for f in agent.briefing.files] == ["README.md"]
+
+
 def test_interrupt_repairs_history(tmp_path):
     def interrupt(req):
         raise KeyboardInterrupt
