@@ -1,0 +1,13 @@
+prompt = "Can you summarize what this project is about?"
+category = "explain"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["seed", "quick"]
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["bank|csv", "budget", "categor"]
+
+[[checks]]
+type = "no_changes"

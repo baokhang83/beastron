@@ -1,0 +1,9 @@
+[budget]
+rent = 1200
+groceries = 450
+transport = 120
+
+[rules]
+rent = ["landlord", "rent"]
+groceries = ["supermarket", "bakery"]
+transport = ["metro", "train"]

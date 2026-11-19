@@ -1,0 +1,15 @@
+prompt = "The project doesn't compile any more. Fix the compile error so that the build and the tests pass. Check with: mvn -o -q test"
+category = "fix"
+language = "java"
+source = "synthetic"
+timeout = 600
+tags = ["seed"]
+
+[[checks]]
+type = "command"
+run = "mvn -o -q test"
+timeout = 300
+
+[[checks]]
+type = "unchanged"
+paths = ["src/test"]
