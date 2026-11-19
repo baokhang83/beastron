@@ -63,6 +63,10 @@ class RunResult:
     error: str | None = None
     model_digest: str | None = None
     beastron_commit: str | None = None
+    # reference runs (beastron.evals.reference) only
+    claude_code_version: str | None = None
+    models_used: list[str] = field(default_factory=list)  # every model Claude Code called, from its own report
+    cost_usd: float | None = None  # Claude Code's estimate at list prices, not what a subscription is charged
     sandboxed: bool = True
     trace: str | None = None
     started_at: str = ""

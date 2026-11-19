@@ -62,6 +62,28 @@ Results go to `~/.local/state/beastron/evals/runs/<run id>/`:
 - `results.jsonl`: one line per run, with pass/fail, each check's reason, how the turn ended, steps, tokens, time, nudges, tool errors, the change record, the model digest and beastron's commit
 - `traces/`: the session trace of every run
 
+## The Claude Code reference
+
+beastron's target is measured against Claude Code with a pinned model, on the same tasks, workspaces and checks:
+
+```bash
+beastron eval reference                    # every task, claude-sonnet-5-5, 3 repeats
+beastron eval reference -s quick -n 1      # one suite, one repeat
+beastron eval reference -m <model id>      # another pinned model
+```
+
+**Each run is a real Claude Code session on your account** (subscription limits or API billing): the full suite with 3 repeats is about 170 sessions.
+
+Each run calls `claude -p <prompt> --model <model>` in the task's fresh workspace, with:
+- `--safe-mode`: no CLAUDE.md, skills, plugins, hooks or MCP servers, so your own setup doesn't change the result. Auth and the built-in tools work as usual.
+- `--no-session-persistence`: no session files under `~/.claude`, which would otherwise show up as real usage in `beastron usecases`
+- `--dangerously-skip-permissions`: every action is approved, as in beastron's own evals. The whole Claude Code process runs in the same write sandbox, which also allows its own state: `~/.claude`, `~/.claude.json` and `~/Library/Caches`.
+- `--output-format stream-json`: the event stream becomes the run's trace
+
+The task's `timeout` is enforced. Claude Code has no step limit option, so `max_steps` doesn't apply to reference runs.
+
+Results are stored like beastron's, under the profile `claude-code-<model>` (for example `claude-code-sonnet-5-5`). Each result line also records Claude Code's version, every model it called (Claude Code can call a smaller model for background work), and its own cost estimate at list prices, which is not what a subscription is charged. The traces hold full transcripts, so they stay in the state folder; the committed summary has counts only. The report flags a **changed Claude Code version** against the baseline, like a changed model file.
+
 ## Reports, baselines and regressions
 
 After a run, `beastron eval run` prints a report per model profile and writes a **summary** to `evals/results/<run>_<profile>_<beastron commit>.json`. Summaries hold pass counts per task and category, timing, the model digest and beastron's commit, and no transcripts. Commit them: together they are the score's history.
@@ -77,6 +99,7 @@ Compared with the baseline, the report flags:
 - **a task regression:** the task passed in most baseline runs, and now fails in at least 2 of every 3 runs
 - **a category regression:** the pass rate is clearly lower, meaning the 95% confidence ranges (Wilson score) of the two rates don't overlap. With few runs, smaller drops are noise.
 - **a changed model file** (digest), so a model update can't hide inside a score change
+- **a changed Claude Code version**, for reference runs
 - improvements, and tasks added or removed
 
 `beastron eval run` and `beastron eval report` exit with status 1 when there is a regression.
@@ -143,6 +166,8 @@ CI has no GPU and no model server, so it tests the harness with a **scripted mod
 - a scripted pass and a scripted fail produce the expected summary
 - turning a pass into a fail is flagged as a regression
 - `beastron eval run`, `baseline` and `report` work end to end, including exit code 1 on a regression
+
+The reference runner is tested the same way, with a fake `claude` script (`tests/test_eval_reference.py`).
 
 Real model runs happen on the reference machine.
 
