@@ -1,10 +1,21 @@
-# Beastron
+<div align="center">
+  <img src="docs/assets/beastron-logo2.png" alt="Beastron Mascot" width="260" />
+  <h1>Beastron</h1>
+</div>
 
-**How close can a free, local coding agent get to a hosted one on real work?**
+<div align="center">
+  
+<b>How close can a free, local coding agent get to a hosted one on real work?</b>
 
-Beastron is an **experimental** coding agent for local open-weight models, built to answer that question. It runs entirely on your own machine: no subscription, no per-token cost, and no code sent anywhere. It works with any OpenAI-compatible model server (Ollama, LM Studio, llama.cpp, vLLM).
+<p>
+Beastron is an <b>experimental</b> coding agent for local open-weight models, built to answer that question. It runs entirely on your own machine: no subscription, no per-token cost, and no code sent anywhere. It works with any OpenAI-compatible model server (Ollama, LM Studio, llama.cpp, vLLM). It is also a measurement project. Beastron is compared with Claude Code on the same tasks, drawn from real development work, and the gap is closed one measured change at a time. The target is to complete at least 80% as many of those tasks as Claude Code does. The full plan, the process and the roadmap are in <a href="https://github.com/baokhang83/beastron/blob/main/docs/plan.md">docs/plan.md</a>.
+</p>
 
-It is also a measurement project. Beastron is compared with Claude Code on the same tasks, drawn from real development work, and the gap is closed one measured change at a time. The target is to complete at least 80% as many of those tasks as Claude Code does. The full plan, the process and the roadmap are in [docs/plan.md](docs/plan.md).
+<a href="https://github.com/baokhang83/mnemo-warmup/actions/workflows/build.yml"><img alt="build" src="https://github.com/baokhang83/mnemo-warmup/actions/workflows/build.yml/badge.svg"></a>
+<a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
+<img alt="Status: alpha" src="https://img.shields.io/badge/status-alpha-yellow">
+
+</div>
 
 ## Status: early, and honest about it
 
