@@ -6,12 +6,12 @@ import subprocess
 import pytest
 from typer.testing import CliRunner
 
-from firox.agent import Agent
-from firox.cli import app
-from firox.client import ModelReply
-from firox.quirks import ToolCall
-from firox.tools import Workspace, make_tools
-from firox.trace import SessionTrace, digest_from_tags, fan_out, model_digest, repo_state
+from beastron.agent import Agent
+from beastron.cli import app
+from beastron.client import ModelReply
+from beastron.quirks import ToolCall
+from beastron.tools import Workspace, make_tools
+from beastron.trace import SessionTrace, digest_from_tags, fan_out, model_digest, repo_state
 from test_agent import PROFILE, FakeClient
 
 GIT_ENV = {
@@ -24,7 +24,7 @@ GIT_ENV = {
 @pytest.fixture(autouse=True)
 def state_dir(tmp_path, monkeypatch):
     path = tmp_path / "state"
-    monkeypatch.setenv("FIROX_STATE_DIR", str(path))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(path))
     return path
 
 
@@ -54,7 +54,7 @@ def test_a_session_file_with_header_events_and_turn_end(tmp_path, state_dir):
     header = lines[0]
     assert header["type"] == "session" and header["cwd"] == str(project.resolve())
     assert header["model"]["profile"] == "fake" and "digest" in header["model"]
-    assert "version" in header["firox"] and "commit" in header["firox"]
+    assert "version" in header["beastron"] and "commit" in header["beastron"]
 
     types = [r["type"] for r in lines]
     assert types[1] == "turn_start" and lines[1]["task"] == "create notes.txt"

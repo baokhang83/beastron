@@ -19,7 +19,7 @@
     # license = "Apache-2.0"    #   the repository's license, recorded when the task was added
     # at = "commit"             #   start AT the commit instead of its parent (questions about a repository)
 
-    [[checks]]                  # decide pass or fail (types in firox.evals.checks)
+    [[checks]]                  # decide pass or fail (types in beastron.evals.checks)
     type = "command"
     run = "python -m pytest -q"
 

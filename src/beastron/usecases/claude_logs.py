@@ -1,7 +1,7 @@
 """Read Claude Code's session logs into requests.
 
 Logs live in `~/.claude/projects/<encoded working folder>/<session>.jsonl`
-(`FIROX_CLAUDE_DIR` overrides the root). Each line is a record; the ones that
+(`BEASTRON_CLAUDE_DIR` overrides the root). Each line is a record; the ones that
 matter are:
 - `user` records whose content is text: a request the person typed (or a slash
   command). User records whose content is a list of `tool_result` blocks are
@@ -40,7 +40,7 @@ _PASTE = re.compile(r"</?pasted_content[^>]*>")
 
 
 def claude_root() -> Path:
-    return Path(os.environ.get("FIROX_CLAUDE_DIR") or "~/.claude/projects").expanduser()
+    return Path(os.environ.get("BEASTRON_CLAUDE_DIR") or "~/.claude/projects").expanduser()
 
 
 def encode_folder(path: Path) -> str:

@@ -1,7 +1,7 @@
 """Read Codex session logs into requests (the same format as the Claude Code reader).
 
 Logs live in `~/.codex/sessions/<year>/<month>/<day>/rollout-*.jsonl`
-(`FIROX_CODEX_DIR` overrides the root). Every line is `{timestamp, type, payload}`:
+(`BEASTRON_CODEX_DIR` overrides the root). Every line is `{timestamp, type, payload}`:
 - `session_meta` (first line): the session id and its working folder (`cwd`)
 - `event_msg` with `payload.type == "user_message"`: a request the person typed.
   (`response_item` user messages also contain context Codex injects itself,
@@ -33,7 +33,7 @@ _EXEC_TOOL = re.compile(r"\btools\.(\w+)\s*\(")
 
 
 def codex_root() -> Path:
-    return Path(os.environ.get("FIROX_CODEX_DIR") or "~/.codex/sessions").expanduser()
+    return Path(os.environ.get("BEASTRON_CODEX_DIR") or "~/.codex/sessions").expanduser()
 
 
 def session_files(root: Path | None = None) -> Iterator[Path]:

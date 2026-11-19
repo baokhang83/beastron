@@ -2,10 +2,10 @@
 
 The trace is the foundation for evals, debugging and the feedback loop
 (docs/plan.md § 5.1). It listens to agent events like the UI does and writes
-them to `~/.local/state/firox/sessions/` (or `$FIROX_STATE_DIR/sessions/`).
+them to `~/.local/state/beastron/sessions/` (or `$BEASTRON_STATE_DIR/sessions/`).
 
 Line 1 is a header: when and where the session ran, the model profile and the
-model's digest (so a changed model is visible), firox's own version, and the
+model's digest (so a changed model is visible), beastron's own version, and the
 project's git state at the start (HEAD, uncommitted diff, untracked files).
 Every following line is one event. Streamed text and reasoning are combined
 into one `model_output` record per model step instead of hundreds of pieces.
@@ -42,7 +42,7 @@ DIGEST_TIMEOUT = 2.0  # seconds; a slow or foreign server must not delay startup
 
 
 def state_dir() -> Path:
-    return Path(os.environ.get("FIROX_STATE_DIR") or "~/.local/state/firox").expanduser()
+    return Path(os.environ.get("BEASTRON_STATE_DIR") or "~/.local/state/beastron").expanduser()
 
 
 def sessions_dir() -> Path:
@@ -72,7 +72,7 @@ class SessionTrace:
             "session_id": session_id,
             "started_at": now.isoformat(),
             "cwd": str(ws.root),
-            "firox": firox_version(),
+            "beastron": beastron_version(),
             "model": {
                 "profile": profile.name,
                 "model": profile.model,
@@ -139,8 +139,8 @@ def fan_out(*listeners: Callable[[Event], None] | None) -> Callable[[Event], Non
     return emit
 
 
-def firox_version() -> dict[str, Any]:
-    """firox's package version, plus the git commit when running from a checkout."""
+def beastron_version() -> dict[str, Any]:
+    """beastron's package version, plus the git commit when running from a checkout."""
     source = Path(__file__).resolve().parents[2]
     info: dict[str, Any] = {"version": __version__, "commit": None, "dirty": None}
     if (source / ".git").exists():

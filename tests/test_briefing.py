@@ -1,5 +1,5 @@
-from firox.briefing import budget_for, build_briefing, find_entry
-from firox.tools import Workspace
+from beastron.briefing import budget_for, build_briefing, find_entry
+from beastron.tools import Workspace
 
 
 def write(root, files):

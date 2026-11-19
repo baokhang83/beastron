@@ -95,7 +95,7 @@ class RichUI:
     def header(self, profile: ModelProfile, root: Path, briefing: Briefing | None = None) -> None:
         self.root = root
         line = Text()
-        line.append(" firox ", style=f"bold black on {ACCENT}")
+        line.append(" beastron ", style=f"bold black on {ACCENT}")
         line.append(f"  {profile.name}", style="bold")
         line.append(f" ({profile.model})", style="dim")
         line.append(f"  ·  {fmt_path(root)}  ·  ctx {fmt_tokens(profile.context)}", style="dim")
@@ -178,7 +178,7 @@ class RichUI:
     def _turn_summary(self, end: TurnEnd) -> None:
         marks = {
             "done": ("✓ done", "green"),
-            "denied": ("✗ stopped: you denied the action; tell firox what to do instead", "yellow"),
+            "denied": ("✗ stopped: you denied the action; tell beastron what to do instead", "yellow"),
             "max_steps": ("⚠ stopped at the step limit", "yellow"),
             "interrupted": ("✗ interrupted", "yellow"),
             "error": ("✗ failed", "red"),
@@ -207,7 +207,7 @@ class RichUI:
         """What really changed, from the tools. The model's summary above can be wrong."""
         letters = {"created": ("A", "green"), "modified": ("M", "yellow"), "deleted": ("D", "red")}
         if end.changes:
-            self.console.print(Text("   files changed by firox:", style="dim"))
+            self.console.print(Text("   files changed by beastron:", style="dim"))
             for change in end.changes:
                 letter, style = letters[change.kind]
                 line = Text("     ")
@@ -217,7 +217,7 @@ class RichUI:
                     line.append(f"  +{change.added} -{change.removed}", style="dim")
                 self.console.print(line)
         elif end.reason != "error":
-            self.console.print(Text("   no files changed by firox's file tools", style="dim"))
+            self.console.print(Text("   no files changed by beastron's file tools", style="dim"))
         if end.shell_commands:
             n = end.shell_commands
             self.console.print(

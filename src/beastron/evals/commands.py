@@ -1,4 +1,4 @@
-"""`firox eval …` commands.
+"""`beastron eval …` commands.
 
 - `run`: run tasks, write a summary per model profile, compare with the baseline
 - `report`: summarize a run (default: the latest) or show the history
@@ -60,7 +60,7 @@ MIN_PER_CATEGORY = 2
 
 eval_app = typer.Typer(
     name="eval",
-    help="Measure firox on the eval suite (see docs/plan.md).",
+    help="Measure beastron on the eval suite (see docs/plan.md).",
     add_completion=False,
     no_args_is_help=True,
 )
@@ -96,7 +96,7 @@ def run_suite(
         raise typer.Exit(1)
     if not unsafe_no_sandbox and not sandbox.available():
         console.print("[red]The sandbox (sandbox-exec) is only available on macOS. Shell commands are approved "
-                      "automatically during evals, so firox won't run them unsandboxed unless you pass --unsafe-no-sandbox.[/]")
+                      "automatically during evals, so beastron won't run them unsandboxed unless you pass --unsafe-no-sandbox.[/]")
         raise typer.Exit(1)
 
     total = len(tasks) * len(profiles) * repeats
@@ -197,7 +197,7 @@ def _render(console: Console, s: dict, base: dict | None, cmp: Comparison | None
     t = s["totals"]
     digest = (s["model_digests"] or ["unknown"])[0][:12]
     console.print(f"\n[bold]{escape(s['profile'])}[/] ({escape(s['model'])}, digest {digest}) · "
-                  f"firox {(s['firox_commit'] or 'unknown')[:7]}" + ("" if s["sandboxed"] else " · [yellow]not sandboxed[/]"))
+                  f"beastron {(s['beastron_commit'] or 'unknown')[:7]}" + ("" if s["sandboxed"] else " · [yellow]not sandboxed[/]"))
 
     table = Table(box=None, pad_edge=False, show_edge=False)
     for column in ("category", "tasks", "passed", "rate", "baseline"):
@@ -231,7 +231,7 @@ def _render(console: Console, s: dict, base: dict | None, cmp: Comparison | None
                   f"median {t['median_seconds']:.0f}s · p90 {t['p90_seconds']:.0f}s · "
                   f"{t['timeouts']} timeouts · {t['errors']} errors · {t['nudges']} nudges · {t['tool_errors']} tool errors")
     if base is None:
-        console.print("[dim]no baseline yet for this profile: `firox eval baseline` stores one[/]")
+        console.print("[dim]no baseline yet for this profile: `beastron eval baseline` stores one[/]")
         return
     if cmp.digest_changed:
         console.print("[yellow]⚠ the model file changed since the baseline; score changes may come from the model[/]")
@@ -251,11 +251,11 @@ def _history(console: Console, results_dir: Path, profile: str | None) -> None:
         return
     for name in profiles:
         table = Table(title=name, box=None, pad_edge=False, show_edge=False, title_justify="left")
-        for column in ("run", "firox", "model", "score", "passed", "median"):
+        for column in ("run", "beastron", "model", "score", "passed", "median"):
             table.add_column(column)
         for s in history(name, results_dir):
             t = s["totals"]
-            table.add_row(s["run_id"].split("_")[0], (s["firox_commit"] or "?")[:7], (s["model_digests"] or ["?"])[0][:12],
+            table.add_row(s["run_id"].split("_")[0], (s["beastron_commit"] or "?")[:7], (s["model_digests"] or ["?"])[0][:12],
                           f"{t['score']:.0%}", f"{t['passed']}/{t['runs']}", f"{t['median_seconds']:.0f}s")
         console.print(table)
 
@@ -287,7 +287,7 @@ def propose(
         table.add_row(c.sha[:7], c.category, str(len(c.files)), str(c.lines), str(len(c.tests)), escape(c.subject[:70]))
     console.print(table)
     if found:
-        console.print(f"[dim]add one: firox eval add --repo {repo} --commit <commit>[/]")
+        console.print(f"[dim]add one: beastron eval add --repo {repo} --commit <commit>[/]")
 
 
 @eval_app.command("add")
@@ -400,7 +400,7 @@ def coverage(
         console.print(f"[red]{escape(str(e))}[/]")
         raise typer.Exit(1) from None
     if not weights:
-        console.print("[yellow]No weights yet: run `firox usecases scan` and `firox usecases classify --write`.[/]")
+        console.print("[yellow]No weights yet: run `beastron usecases scan` and `beastron usecases classify --write`.[/]")
         raise typer.Exit(1)
     target_size = size or len(tasks)
     counts = Counter(t.category for t in tasks)
@@ -431,4 +431,4 @@ def coverage(
         console.print("languages: " + " · ".join(lines))
     console.print(("[yellow]to match your weights, add: " + ", ".join(to_add) + "[/]") if to_add
                   else "[green]the suite matches your weights[/]")
-    console.print("[dim]more tasks for a category: `firox eval propose` (commit replays) or a new synthetic task; see docs/refitting.md[/]")
+    console.print("[dim]more tasks for a category: `beastron eval propose` (commit replays) or a new synthetic task; see docs/refitting.md[/]")

@@ -1,4 +1,4 @@
-"""`firox usecases …` commands: find out what the owner really asks coding agents to do."""
+"""`beastron usecases …` commands: find out what the owner really asks coding agents to do."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ def scan(
     codex: Annotated[bool, typer.Option(help="Read Codex's session logs.")] = True,
     since: Annotated[str | None, typer.Option(help="Only requests from this period: 90d, 12w, or a date (2026-06-01).")] = None,
 ) -> None:
-    """Read the session logs into ~/.local/state/firox/usecases/ (counts only are printed)."""
+    """Read the session logs into ~/.local/state/beastron/usecases/ (counts only are printed)."""
     console = Console(highlight=False)
     try:
         cutoff = parse_since(since) if since else None
@@ -81,7 +81,7 @@ def _load_scanned(console: Console) -> list:
         if path.is_file():
             requests += load(path)
     if not requests:
-        console.print("[red]Nothing scanned yet: run `firox usecases scan` first.[/]")
+        console.print("[red]Nothing scanned yet: run `beastron usecases scan` first.[/]")
         raise typer.Exit(1)
     return requests
 

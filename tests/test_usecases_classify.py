@@ -5,10 +5,10 @@ import json
 import pytest
 from typer.testing import CliRunner
 
-from firox.cli import app
-from firox.evals.report import load_weights, score, summarize
-from firox.usecases.classify import classify, classify_all, project_language, summary, write_markdown
-from firox.usecases.requests import Request, save
+from beastron.cli import app
+from beastron.evals.report import load_weights, score, summarize
+from beastron.usecases.classify import classify, classify_all, project_language, summary, write_markdown
+from beastron.usecases.requests import Request, save
 
 
 def req(text, tools=None, shell=None, command=None, project=None, source="claude"):
@@ -142,7 +142,7 @@ def test_the_eval_score_uses_usage_weights(tmp_path):
 
 
 def test_classify_and_sample_commands(tmp_path, monkeypatch):
-    monkeypatch.setenv("FIROX_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "state"))
     save([req("fix the failing test", EDIT), req("yes"), req("what is this?", {"Read": 1})], "claude")
     out = tmp_path / "published" / "usecases.md"
     result = CliRunner().invoke(app, ["usecases", "classify", "--write", "--out", str(out)])
@@ -157,6 +157,6 @@ def test_classify_and_sample_commands(tmp_path, monkeypatch):
 
 
 def test_classify_without_a_scan_says_so(tmp_path, monkeypatch):
-    monkeypatch.setenv("FIROX_STATE_DIR", str(tmp_path / "empty"))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "empty"))
     result = CliRunner().invoke(app, ["usecases", "classify"])
-    assert result.exit_code == 1 and "firox usecases scan" in result.output
+    assert result.exit_code == 1 and "beastron usecases scan" in result.output
