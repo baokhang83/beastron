@@ -34,6 +34,7 @@ from .report import (
     load_baseline,
     load_results,
     load_summary,
+    load_weights,
     save_baseline,
     save_summary,
     summarize,
@@ -109,7 +110,7 @@ def run_suite(
         raise typer.Exit(130) from None
     passed = sum(r.passed for r in results)
     console.print(f"\n{passed}/{len(results)} runs passed · raw results: {run_dir / 'results.jsonl'}")
-    summaries = summarize([asdict(r) for r in results], run_id=run_dir.name)
+    summaries = summarize([asdict(r) for r in results], run_id=run_dir.name, weights=load_weights())
     regressed = _report(console, summaries, baselines_dir)
     if save:
         for summary in summaries:
@@ -153,7 +154,7 @@ def baseline(
 def _summaries_of(console: Console, run: Path | None, profile: str | None) -> list[dict]:
     try:
         run_dir = run or latest_run(state_dir() / "evals" / "runs")
-        summaries = summarize(load_results(run_dir), run_id=run_dir.name)
+        summaries = summarize(load_results(run_dir), run_id=run_dir.name, weights=load_weights())
     except FileNotFoundError as e:
         console.print(f"[red]{escape(str(e))}[/]")
         raise typer.Exit(1) from None
@@ -209,7 +210,8 @@ def _render(console: Console, s: dict, base: dict | None, cmp: Comparison | None
                       f"{b['passed']}/{b['runs']}" if b else "-")
     console.print(tasks)
 
-    console.print(f"score {t['score']:.0%} (unweighted until M1) · {t['passed']}/{t['runs']} runs passed · "
+    weighting = "usage-weighted" if t.get("score_weighting") == "usage" else "equal weights"
+    console.print(f"score {t['score']:.0%} ({weighting}) · {t['passed']}/{t['runs']} runs passed · "
                   f"median {t['median_seconds']:.0f}s · p90 {t['p90_seconds']:.0f}s · "
                   f"{t['timeouts']} timeouts · {t['errors']} errors · {t['nudges']} nudges · {t['tool_errors']} tool errors")
     if base is None:

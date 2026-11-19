@@ -15,8 +15,10 @@
   - a changed model digest, so a model update can't hide inside a score change
   - improvements, and tasks added or removed
 
-Until use-case weights exist (milestone M1), the score is the plain average of
-the category pass rates.
+The score weights each category's pass rate by how often the owner asks for that
+kind of task (`evals/usecases.json`, from `firox usecases classify --write`).
+Categories without a weight, or no weights file at all, fall back to the plain
+average of the category pass rates.
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ from typing import Any
 SCHEMA = 1
 RESULTS_DIR = Path("evals/results")
 BASELINES_DIR = Path("evals/baselines")
+WEIGHTS_FILE = Path("evals/usecases.json")
 Z95 = 1.96
 
 
@@ -53,15 +56,32 @@ def latest_run(runs_dir: Path) -> Path:
 
 # ----- summaries ----------------------------------------------------------------
 
-def summarize(results: list[dict[str, Any]], *, run_id: str = "") -> list[dict[str, Any]]:
+def load_weights(path: Path = WEIGHTS_FILE) -> dict[str, float] | None:
+    """Category weights from use-case inference, or None when there are none."""
+    if not path.is_file():
+        return None
+    weights = json.loads(path.read_text(encoding="utf-8")).get("weights") or {}
+    return {category: float(w) for category, w in weights.items()} or None
+
+
+def score(categories: dict[str, dict[str, Any]], weights: dict[str, float] | None) -> tuple[float, str]:
+    """(score, how it was weighted): usage-weighted where weights exist for the categories run."""
+    rates = {c: v["rate"] for c, v in categories.items()}
+    used = {c: weights[c] for c in rates if weights and weights.get(c, 0) > 0}
+    if used:
+        return sum(rates[c] * w for c, w in used.items()) / sum(used.values()), "usage"
+    return statistics.mean(rates.values()), "equal"
+
+
+def summarize(results: list[dict[str, Any]], *, run_id: str = "", weights: dict[str, float] | None = None) -> list[dict[str, Any]]:
     """One summary per model profile found in the results."""
     by_profile: dict[str, list[dict[str, Any]]] = {}
     for r in results:
         by_profile.setdefault(r["profile"], []).append(r)
-    return [_summary(profile, runs, run_id) for profile, runs in by_profile.items()]
+    return [_summary(profile, runs, run_id, weights) for profile, runs in by_profile.items()]
 
 
-def _summary(profile: str, runs: list[dict[str, Any]], run_id: str) -> dict[str, Any]:
+def _summary(profile: str, runs: list[dict[str, Any]], run_id: str, weights: dict[str, float] | None = None) -> dict[str, Any]:
     tasks: dict[str, dict[str, Any]] = {}
     for r in runs:
         t = tasks.setdefault(r["task"], {"category": r["category"], "runs": 0, "passed": 0, "timeouts": 0,
@@ -85,6 +105,7 @@ def _summary(profile: str, runs: list[dict[str, Any]], run_id: str) -> dict[str,
 
     seconds = sorted(r["seconds"] for r in runs)
     passed = sum(bool(r["passed"]) for r in runs)
+    total_score, weighting = score(categories, weights)
     return {
         "schema": SCHEMA,
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -100,7 +121,8 @@ def _summary(profile: str, runs: list[dict[str, Any]], run_id: str) -> dict[str,
             "runs": len(runs),
             "passed": passed,
             "rate": round(passed / len(runs), 4),
-            "score": round(statistics.mean(c["rate"] for c in categories.values()), 4),
+            "score": round(total_score, 4),
+            "score_weighting": weighting,  # "usage" (from evals/usecases.json) or "equal"
             "median_seconds": round(statistics.median(seconds), 1),
             "p90_seconds": round(_percentile(seconds, 0.9), 1),
             "timeouts": sum(r["reason"] == "timeout" for r in runs),
