@@ -29,6 +29,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from .checks import Check, CheckError, parse_checks
+
 TASKS_DIR = Path("evals/tasks")
 SOURCES = ("synthetic", "commit-replay", "captured")
 CATEGORIES = (
@@ -68,7 +70,7 @@ class Task:
     language: str
     source: str
     workspace: WorkspaceSpec
-    checks: list[dict[str, Any]]
+    checks: list[Check]
     timeout: int = 600
     max_steps: int = 25
     tags: tuple[str, ...] = field(default_factory=tuple)
@@ -102,12 +104,16 @@ def load_task(task_dir: Path) -> Task:
         raise TaskError(f"{where}: 'tags' must be a list of text")
 
     workspace = _workspace(where, task_dir, data["source"], data.get("workspace", {}))
-    checks = data.get("checks", [])
-    if not isinstance(checks, list) or not checks:
+    raw_checks = data.get("checks", [])
+    if not isinstance(raw_checks, list) or not raw_checks:
         raise TaskError(f"{where}: at least one [[checks]] entry is required")
-    for i, check in enumerate(checks, 1):
+    for i, check in enumerate(raw_checks, 1):
         if not isinstance(check, dict) or not isinstance(check.get("type"), str):
             raise TaskError(f"{where}: check {i} needs a 'type'")
+    try:
+        checks = parse_checks(raw_checks)
+    except CheckError as e:
+        raise TaskError(f"{where}: {e}") from None
 
     return Task(
         id=task_dir.name,
