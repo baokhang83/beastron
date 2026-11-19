@@ -1,6 +1,7 @@
 """`beastron eval …` commands.
 
 - `run`: run tasks, write a summary per model profile, compare with the baseline
+- `reference`: the same, with Claude Code and a pinned model instead of beastron
 - `report`: summarize a run (default: the latest) or show the history
 - `baseline`: store a run as the reference for its profile(s)
 - `propose`: list commits of a public repository that could become replay tasks
@@ -33,6 +34,7 @@ from rich.table import Table
 from ..config import ConfigError, load_config
 from ..trace import state_dir
 from ..ui import RichUI
+from . import reference as reference_runner
 from . import runner, sandbox
 from .report import (
     BASELINES_DIR,
@@ -102,6 +104,73 @@ def run_suite(
     total = len(tasks) * len(profiles) * repeats
     console.print(f"Running {len(tasks)} task(s) × {len(profiles)} profile(s) × {repeats} repeat(s) = {total} runs"
                   + ("  [yellow](no sandbox)[/]" if unsafe_no_sandbox else ""))
+    progress = _progress(console, total)
+
+    ui = RichUI(console=console, verbose=True) if verbose else None
+    try:
+        run_dir, results = runner.run_suite(
+            tasks, profiles, repeats=repeats, progress=progress, use_sandbox=not unsafe_no_sandbox,
+            keep=keep, on_event=ui.handle if ui else None,
+        )
+    except KeyboardInterrupt:
+        console.print("[yellow]Stopped. Finished runs are saved.[/]")
+        raise typer.Exit(130) from None
+    raise typer.Exit(_finish(console, run_dir, results, save=save, results_dir=results_dir, baselines_dir=baselines_dir))
+
+
+@eval_app.command("reference")
+def reference(
+    suite: Annotated[str | None, typer.Option("--suite", "-s", help="Only tasks with this tag, e.g. seed or quick.")] = None,
+    task: Annotated[list[str] | None, typer.Option("--task", "-t", help="Only this task id (repeatable).")] = None,
+    model: Annotated[str, typer.Option("--model", "-m", help="The pinned Claude model.")] = reference_runner.DEFAULT_MODEL,
+    repeats: Annotated[int, typer.Option("--repeats", "-n", min=1, help="Runs per task.")] = 3,
+    claude: Annotated[str, typer.Option(help="The Claude Code command.")] = "claude",
+    tasks_dir: Annotated[Path, typer.Option(help="Folder with the eval tasks.")] = TASKS_DIR,
+    keep: Annotated[bool, typer.Option(help="Keep each run's workspace for inspection.")] = False,
+    unsafe_no_sandbox: Annotated[
+        bool, typer.Option("--unsafe-no-sandbox", help="Run Claude Code without the sandbox (everything is approved automatically!).")
+    ] = False,
+    save: Annotated[bool, typer.Option(help="Write a summary to the results folder.")] = True,
+    results_dir: Annotated[Path, typer.Option(help="Where summaries are written.")] = RESULTS_DIR,
+    baselines_dir: Annotated[Path, typer.Option(help="Where baselines are read from.")] = BASELINES_DIR,
+) -> None:
+    """Run eval tasks through Claude Code with a pinned model: the reference beastron is measured against.
+
+    Each run is a real Claude Code session on your account (subscription or API key).
+    """
+    console = Console(highlight=False)
+    try:
+        tasks = load_tasks(tasks_dir, tag=suite, ids=task or None)
+    except TaskError as e:
+        console.print(f"[red]{escape(str(e))}[/]")
+        raise typer.Exit(1) from None
+    if not tasks:
+        console.print("[yellow]No tasks match.[/]")
+        raise typer.Exit(1)
+    if shutil.which(claude) is None:
+        console.print(f"[red]{escape(claude)} not found: install Claude Code or pass --claude[/]")
+        raise typer.Exit(1)
+    if not unsafe_no_sandbox and not sandbox.available():
+        console.print("[red]The sandbox (sandbox-exec) is only available on macOS. Claude Code runs with every action "
+                      "approved, so beastron won't run it unsandboxed unless you pass --unsafe-no-sandbox.[/]")
+        raise typer.Exit(1)
+
+    total = len(tasks) * repeats
+    version = reference_runner.claude_version(claude) or "unknown version"
+    console.print(f"Running {len(tasks)} task(s) × {repeats} repeat(s) = {total} Claude Code sessions "
+                  f"({escape(model)}, Claude Code {escape(version)})" + ("  [yellow](no sandbox)[/]" if unsafe_no_sandbox else ""))
+    try:
+        run_dir, results = reference_runner.run_reference_suite(
+            tasks, model=model, claude=claude, repeats=repeats, progress=_progress(console, total),
+            use_sandbox=not unsafe_no_sandbox, keep=keep,
+        )
+    except KeyboardInterrupt:
+        console.print("[yellow]Stopped. Finished runs are saved.[/]")
+        raise typer.Exit(130) from None
+    raise typer.Exit(_finish(console, run_dir, results, save=save, results_dir=results_dir, baselines_dir=baselines_dir))
+
+
+def _progress(console: Console, total: int):
     done = 0
 
     def progress(r: RunResult) -> None:
@@ -115,15 +184,12 @@ def run_suite(
         console.print(f"[{done:>{len(str(total))}}/{total}] {mark} {r.task} · {r.profile} #{r.repeat} · "
                       f"{r.seconds:.0f}s · {r.steps} steps{why}{detail}")
 
-    ui = RichUI(console=console, verbose=True) if verbose else None
-    try:
-        run_dir, results = runner.run_suite(
-            tasks, profiles, repeats=repeats, progress=progress, use_sandbox=not unsafe_no_sandbox,
-            keep=keep, on_event=ui.handle if ui else None,
-        )
-    except KeyboardInterrupt:
-        console.print("[yellow]Stopped. Finished runs are saved.[/]")
-        raise typer.Exit(130) from None
+    return progress
+
+
+def _finish(console: Console, run_dir: Path, results: list[RunResult], *, save: bool, results_dir: Path,
+            baselines_dir: Path) -> int:
+    """Summarize, compare with the baseline and save; the exit code (1 if anything regressed)."""
     passed = sum(r.passed for r in results)
     console.print(f"\n{passed}/{len(results)} runs passed · raw results: {run_dir / 'results.jsonl'}")
     summaries = summarize([asdict(r) for r in results], run_id=run_dir.name, weights=load_weights())
@@ -131,7 +197,7 @@ def run_suite(
     if save:
         for summary in summaries:
             console.print(f"[dim]summary: {save_summary(summary, results_dir)}[/]")
-    raise typer.Exit(1 if regressed else 0)
+    return 1 if regressed else 0
 
 
 @eval_app.command("report")
@@ -195,8 +261,9 @@ def _report(console: Console, summaries: list[dict], baselines_dir: Path) -> boo
 
 def _render(console: Console, s: dict, base: dict | None, cmp: Comparison | None) -> None:
     t = s["totals"]
-    digest = (s["model_digests"] or ["unknown"])[0][:12]
-    console.print(f"\n[bold]{escape(s['profile'])}[/] ({escape(s['model'])}, digest {digest}) · "
+    versions = s.get("claude_code_versions") or []
+    used = f"Claude Code {', '.join(versions)}" if versions else f"digest {(s['model_digests'] or ['unknown'])[0][:12]}"
+    console.print(f"\n[bold]{escape(s['profile'])}[/] ({escape(s['model'])}, {escape(used)}) · "
                   f"beastron {(s['beastron_commit'] or 'unknown')[:7]}" + ("" if s["sandboxed"] else " · [yellow]not sandboxed[/]"))
 
     table = Table(box=None, pad_edge=False, show_edge=False)
@@ -235,6 +302,8 @@ def _render(console: Console, s: dict, base: dict | None, cmp: Comparison | None
         return
     if cmp.digest_changed:
         console.print("[yellow]⚠ the model file changed since the baseline; score changes may come from the model[/]")
+    if cmp.claude_code_changed:
+        console.print("[yellow]⚠ Claude Code's version changed since the baseline; score changes may come from it[/]")
     for note in cmp.notes:
         style = "red" if "baseline, now" in note or note.startswith("category") else "dim"
         console.print(f"  [{style}]{escape(note)}[/]")
