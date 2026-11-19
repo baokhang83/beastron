@@ -30,11 +30,12 @@ MAX_LOG = 50
 _REF = re.compile(r"^[A-Za-z0-9._/~^@{}:+-]+$")
 
 # Config overrides that stop a repository's own config from running programs.
-_SAFE_CONFIG = [
+SAFE_CONFIG = [
     "-c", "core.fsmonitor=false",
     "-c", "core.pager=cat",
     "-c", "color.ui=false",
 ]
+_SAFE_CONFIG = SAFE_CONFIG  # also used by eval workspaces (firox.evals.workspace)
 
 
 def run_git(ws: Workspace, args: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
