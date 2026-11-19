@@ -3,6 +3,8 @@
   <h1>Beastron</h1>
 </div>
 
+<div align="center">
+  
 <b>How close can a free, local coding agent get to a hosted one on real work?</b>
 
 <p>
