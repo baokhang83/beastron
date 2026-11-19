@@ -1,8 +1,10 @@
 # Firox
 
-An **experimental** coding agent for local open-weight models. It runs entirely on your own machine: no subscription, no per-token cost, and no code sent anywhere. It works with any OpenAI-compatible model server (Ollama, LM Studio, llama.cpp, vLLM).
+**How close can a free, local coding agent get to a hosted one on real work?**
 
-Firox is also a measurement project. Its goal is to find out how close a free local setup can get to a hosted agent like Claude Code on real development work, and to close the gap step by step. The full plan, the process and the roadmap are in [docs/plan.md](docs/plan.md).
+Firox is an **experimental** coding agent for local open-weight models, built to answer that question. It runs entirely on your own machine: no subscription, no per-token cost, and no code sent anywhere. It works with any OpenAI-compatible model server (Ollama, LM Studio, llama.cpp, vLLM).
+
+It is also a measurement project. Firox is compared with Claude Code on the same tasks, drawn from real development work, and the gap is closed one measured change at a time. The target is to complete at least 80% as many of those tasks as Claude Code does. The full plan, the process and the roadmap are in [docs/plan.md](docs/plan.md).
 
 ## Status: early, and honest about it
 

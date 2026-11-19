@@ -16,7 +16,11 @@ The price is capability. A model that fits in a laptop's memory is far weaker th
 
 ## 2. Goal and how it is measured
 
-> **Goal:** a reliable local agent that does **80% of what Claude Code does on its owner's real work**, for free, on a **modern baseline developer machine**, with acceptable speed.
+> **The question:** how close can a free, local coding agent get to a hosted one on real work?
+>
+> **The target:** complete **at least 80% as many tasks as Claude Code** (with a pinned Sonnet model) on a suite drawn from the owner's real work, weighted by how often each kind of task occurs. Do it reliably, for free, on a **modern baseline developer machine**, with acceptable speed.
+
+For example, if Claude Code completes 90% of the tasks, firox must complete at least 72%.
 
 ### Reference machine
 
@@ -24,7 +28,7 @@ Every measurement is made on one reference machine: an **Apple M5 with 24 GB of 
 
 ### The 100% line: Claude Code with a pinned model
 
-"80% of Claude Code" needs Claude Code itself as the reference. The same eval tasks are run through Claude Code in headless mode, with the model pinned to an exact version:
+A target relative to Claude Code needs Claude Code's own results on the same tasks. So the eval tasks are also run through Claude Code in headless mode, with the model pinned to an exact version:
 
 ```bash
 claude -p --model claude-sonnet-5-5 --output-format json "<task>"
@@ -168,7 +172,7 @@ Requests are sorted into categories, mainly by rules, with the local model only 
 
 The result has two parts:
 - a committed summary, `evals/usecases.md`, with counts and weights only
-- the list of Claude Code features the owner actually relies on (web access, MCP servers, planning, sub-agents, the GitHub CLI): the concrete checklist behind "80%"
+- the list of Claude Code features the owner actually relies on (web access, MCP servers, planning, sub-agents, the GitHub CLI): the capabilities firox has to cover for the target to be reachable
 
 A **commit miner** proposes commit-replay tasks from the owner's repositories, one category at a time:
 - small commits
@@ -248,7 +252,7 @@ Other facts:
 | Decision | Reason |
 |---|---|
 | Local models only while firox runs | the point of the project: no cost per use, no data leaving the machine, no unannounced model changes |
-| Claude Code with a pinned Sonnet model as the reference | "80% of Claude Code" is only meaningful against Claude Code itself; pinning the model keeps the reference stable |
+| Claude Code with a pinned Sonnet model as the reference | a target relative to Claude Code only means something when measured against Claude Code itself; pinning the model keeps the reference stable |
 | Score weighted by the owner's real usage | the goal is real work, not a generic benchmark |
 | Apache-2.0 license | permissive, with an explicit patent grant; the same license as the owner's other projects; compatible with firox's dependencies (Apache-2.0, MIT, BSD). Model weights aren't bundled; users download them under their own licenses |
 | Python, OpenAI-compatible API | works with every common local model server; the agent never depends on one provider |
