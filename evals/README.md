@@ -1,6 +1,6 @@
 # Eval suite
 
-Tasks that measure firox (see [docs/plan.md § 5.2](../docs/plan.md#52-eval-suite)). Each task is a folder in `evals/tasks/<id>/` with a `task.toml`:
+Tasks that measure beastron (see [docs/plan.md § 5.2](../docs/plan.md#52-eval-suite)). Each task is a folder in `evals/tasks/<id>/` with a `task.toml`:
 
 ```toml
 prompt = "The tests fail. Fix the bug, then run: python -m pytest -q"
@@ -27,7 +27,7 @@ Write the top-level keys before the first `[[checks]]`: in TOML, lines after it 
 
 Every run gets a fresh temporary workspace, removed afterwards. Setup scripts run with fixed git identities and dates, so they build the same history, with the same commit ids, every time. Commit replay clones the repository locally and checks out the parent commit, so the source repository is never touched.
 
-**Excluded projects:** repositories listed in `~/.config/firox/exclude.txt` (or the file `FIROX_EXCLUDE` points to; one path per line, `#` for comments) are never used for commit replay. The list is local configuration and is never committed.
+**Excluded projects:** repositories listed in `~/.config/beastron/exclude.txt` (or the file `BEASTRON_EXCLUDE` points to; one path per line, `#` for comments) are never used for commit replay. The list is local configuration and is never committed.
 
 ## Checks
 
@@ -48,29 +48,29 @@ Each `[[checks]]` entry decides part of the result; a run passes only when all o
 ## Running
 
 ```bash
-firox eval run                          # every task, the default model profile, 3 repeats
-firox eval run -s quick -n 1            # one suite (tag), one repeat
-firox eval run -t fix-chunk -m qwen3-8b-fast,qwen3-8b-local
-firox eval run --keep -v                # keep the workspaces and watch the agent work
+beastron eval run                          # every task, the default model profile, 3 repeats
+beastron eval run -s quick -n 1            # one suite (tag), one repeat
+beastron eval run -t fix-chunk -m qwen3-8b-fast,qwen3-8b-local
+beastron eval run --keep -v                # keep the workspaces and watch the agent work
 ```
 
-Each run gets a fresh workspace. Every action is **approved automatically**, so every shell command the model writes runs inside a macOS sandbox (`sandbox-exec`) that only allows writes inside the run's own folder, the system temp folders, and the build caches `~/.m2`, `~/.gradle` and `~/.cache`. Reading and network access stay allowed. On other systems firox refuses to run evals unless you pass `--unsafe-no-sandbox`.
+Each run gets a fresh workspace. Every action is **approved automatically**, so every shell command the model writes runs inside a macOS sandbox (`sandbox-exec`) that only allows writes inside the run's own folder, the system temp folders, and the build caches `~/.m2`, `~/.gradle` and `~/.cache`. Reading and network access stay allowed. On other systems beastron refuses to run evals unless you pass `--unsafe-no-sandbox`.
 
 The task's `timeout` (wall clock) and `max_steps` are enforced. A timeout counts as a failure. Ctrl-C stops the suite; finished runs are kept.
 
-Results go to `~/.local/state/firox/evals/runs/<run id>/`:
-- `results.jsonl`: one line per run, with pass/fail, each check's reason, how the turn ended, steps, tokens, time, nudges, tool errors, the change record, the model digest and firox's commit
+Results go to `~/.local/state/beastron/evals/runs/<run id>/`:
+- `results.jsonl`: one line per run, with pass/fail, each check's reason, how the turn ended, steps, tokens, time, nudges, tool errors, the change record, the model digest and beastron's commit
 - `traces/`: the session trace of every run
 
 ## Reports, baselines and regressions
 
-After a run, `firox eval run` prints a report per model profile and writes a **summary** to `evals/results/<run>_<profile>_<firox commit>.json`. Summaries hold pass counts per task and category, timing, the model digest and firox's commit, and no transcripts. Commit them: together they are the score's history.
+After a run, `beastron eval run` prints a report per model profile and writes a **summary** to `evals/results/<run>_<profile>_<beastron commit>.json`. Summaries hold pass counts per task and category, timing, the model digest and beastron's commit, and no transcripts. Commit them: together they are the score's history.
 
 ```bash
-firox eval report                 # the latest run, compared with the baseline
-firox eval report <run folder>    # a specific run
-firox eval report --history       # committed summaries over time, per profile
-firox eval baseline               # store the latest run as the baseline (evals/baselines/<profile>.json)
+beastron eval report                 # the latest run, compared with the baseline
+beastron eval report <run folder>    # a specific run
+beastron eval report --history       # committed summaries over time, per profile
+beastron eval baseline               # store the latest run as the baseline (evals/baselines/<profile>.json)
 ```
 
 Compared with the baseline, the report flags:
@@ -79,9 +79,9 @@ Compared with the baseline, the report flags:
 - **a changed model file** (digest), so a model update can't hide inside a score change
 - improvements, and tasks added or removed
 
-`firox eval run` and `firox eval report` exit with status 1 when there is a regression.
+`beastron eval run` and `beastron eval report` exit with status 1 when there is a regression.
 
-**The score is usage-weighted:** each category's pass rate counts as much as that kind of task occurs in the owner's real work, per `evals/usecases.json` (see [usecases.md](usecases.md), produced by `firox usecases scan` and `firox usecases classify --write`). Categories without a weight fall back to equal weights; the report says which was used.
+**The score is usage-weighted:** each category's pass rate counts as much as that kind of task occurs in the owner's real work, per `evals/usecases.json` (see [usecases.md](usecases.md), produced by `beastron usecases scan` and `beastron usecases classify --write`). Categories without a weight fall back to equal weights; the report says which was used.
 
 ## The suite
 
@@ -100,12 +100,12 @@ Compared with the baseline, the report flags:
 The score weights categories by their share of real usage, so fix tasks (many, because commit replays are mostly fixes) count for less than explain or feature tasks.
 
 **Adjusting and refitting:**
-- `evals/weights.toml` holds your own adjustments to the measured weights (`[multiply]` a category, or `[set]` its share). firox never overwrites it.
-- `firox eval coverage` compares the tasks per category and language with the weights and says what to add.
+- `evals/weights.toml` holds your own adjustments to the measured weights (`[multiply]` a category, or `[set]` its share). beastron never overwrites it.
+- `beastron eval coverage` compares the tasks per category and language with the weights and says what to add.
 - [docs/refitting.md](../docs/refitting.md) is the full procedure for refitting the suite when your work changes or a new technology comes in. In Claude Code, `/refit` runs it.
 
 **Where the tasks come from** (`tags`):
-- `seed` (8): synthetic tasks for the failure types seen while building firox (see below)
+- `seed` (8): synthetic tasks for the failure types seen while building beastron (see below)
 - `replay` (18): commits on the main branch of the owner's public repositories (blastradius, mnemo-jvm-warden, blastradius-cache-warmer, mnemo-warmup), replayed from their parent with their tests in place
 - `repo-question` (8): questions about those repositories and arch-metrics-mcp at a pinned commit, checked for the facts the answer must contain
 - the rest: synthetic tasks for git, docs, build, remove, refactor, tests and config work
@@ -114,11 +114,11 @@ The score weights categories by their share of real usage, so fix tasks (many, b
 **Refits** (see [docs/refitting.md](../docs/refitting.md)):
 - 2026-11-19, more Java. 5 feature replays, 4 repository questions and Java git, docs and explain tasks were added, and the remove, refactor and tests tasks were rewritten as Maven projects (46 → 57 tasks, Java 54% → 70%). The classifier rules were fixed first: a fresh hand check had found only 7/20 agreements, and after the fix another fresh sample gave 16/20.
 
-**Verifying the suite:** `firox eval verify` checks every task (or `-s`/`-t` a subset) with no model involved: it must fail as given and pass with its reference solution. Reference solutions:
+**Verifying the suite:** `beastron eval verify` checks every task (or `-s`/`-t` a subset) with no model involved: it must fail as given and pass with its reference solution. Reference solutions:
 - a replayed commit: the commit itself
 - any other task: its `solution/` folder, with files to overlay, `answer.md` for answers, and `solution.sh` for solutions that are commands (git operations)
 
-The two checks run in separate workspaces, so build output from one can't affect the other. `tests/test_suite.py` verifies the synthetic tasks in CI. Tasks built on the owner's repositories need the local clones and the Maven cache, so they are verified with `firox eval verify` on the reference machine, and CI only checks that they reference a public commit with a compatible license and contain no code.
+The two checks run in separate workspaces, so build output from one can't affect the other. `tests/test_suite.py` verifies the synthetic tasks in CI. Tasks built on the owner's repositories need the local clones and the Maven cache, so they are verified with `beastron eval verify` on the reference machine, and CI only checks that they reference a public commit with a compatible license and contain no code.
 
 **Tasks that check tests** (`tests-*`) also check that the tests catch bugs: the check injects small bugs into the code under test and requires the new tests to fail.
 
@@ -142,7 +142,7 @@ The Maven tasks pin plugin and JUnit versions that are in the local `~/.m2` cach
 CI has no GPU and no model server, so it tests the harness with a **scripted model** (`tests/scripted.py`): real seed tasks, replayed tool calls, no network. `tests/test_eval_harness_e2e.py` checks:
 - a scripted pass and a scripted fail produce the expected summary
 - turning a pass into a fail is flagged as a regression
-- `firox eval run`, `baseline` and `report` work end to end, including exit code 1 on a regression
+- `beastron eval run`, `baseline` and `report` work end to end, including exit code 1 on a regression
 
 Real model runs happen on the reference machine.
 
@@ -151,12 +151,12 @@ Real model runs happen on the reference machine.
 Tasks taken from real commits in the owner's **public** repositories:
 
 ```bash
-firox eval propose --repo ~/Documents/blastradius            # candidates, writes nothing
-firox eval add --repo ~/Documents/blastradius --commit 398e105
+beastron eval propose --repo ~/Documents/blastradius            # candidates, writes nothing
+beastron eval add --repo ~/Documents/blastradius --commit 398e105
 ```
 
 - **A candidate** is a small commit (default: at most 3 files and 150 changed lines) that changes source code *and* tests. The repository's first commit is never one, since it has no parent.
 - **The workspace** is the repository at the commit's parent, with the commit's tests put in place. The task: make those tests pass without changing them. The checks: run those tests (offline for Maven), keep them unchanged, and change nothing outside the files the commit changed.
 - **`add` drafts the task** from the commit message, then **verifies** it: the checks must fail on the parent commit and pass on the real commit. It shows the draft and writes it only after you approve.
 - **Questions about a repository** use `at = "commit"`: the workspace is the repository *at* the pinned commit, and the reference solution is `solution/answer.md`.
-- **Only public commits are referenced:** the repository's URL and the commit hash. No code is copied into firox. A repository must be public on GitHub (checked with `gh`) and have a license, which is recorded in the task. Repositories on the exclusion list are refused. If the local clone (`repo`) is missing, the workspace is cloned from `url`.
+- **Only public commits are referenced:** the repository's URL and the commit hash. No code is copied into beastron. A repository must be public on GitHub (checked with `gh`) and have a license, which is recorded in the task. Repositories on the exclusion list are refused. If the local clone (`repo`) is missing, the workspace is cloned from `url`.

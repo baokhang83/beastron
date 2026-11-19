@@ -4,8 +4,8 @@ import subprocess
 
 import pytest
 
-from firox.tools import ToolError, Workspace, make_tools
-from firox.tools.git import is_tracked
+from beastron.tools import ToolError, Workspace, make_tools
+from beastron.tools.git import is_tracked
 
 GIT_ENV = {
     **os.environ,
@@ -96,7 +96,7 @@ def test_repository_config_cannot_run_an_external_diff_program(tool, repo):
     git(repo, "diff")  # plain git does run it ...
     assert marker.exists()
     marker.unlink()
-    run(tool, command="diff")  # ... firox's git tool must not
+    run(tool, command="diff")  # ... beastron's git tool must not
     run(tool, command="show", ref="HEAD")
     run(tool, command="log")
     assert not marker.exists()

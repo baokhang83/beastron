@@ -1,6 +1,6 @@
 import json
 
-from firox.quirks import TagRouter, parse_text_tool_call, safe_arguments
+from beastron.quirks import TagRouter, parse_text_tool_call, safe_arguments
 
 
 def route_all(chunks):

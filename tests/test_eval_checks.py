@@ -1,6 +1,6 @@
 import pytest
 
-from firox.evals.checks import CheckError, Context, changed_paths, evaluate, parse_checks, snapshot
+from beastron.evals.checks import CheckError, Context, changed_paths, evaluate, parse_checks, snapshot
 
 
 @pytest.fixture

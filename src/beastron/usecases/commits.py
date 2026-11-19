@@ -6,7 +6,7 @@ its tests put in place, the task is "make these tests pass", and the commit
 itself is the reference solution.
 
 Tasks only **reference** public commits: the repository's public URL and the
-commit hash. No code from the repository is copied into firox. A repository
+commit hash. No code from the repository is copied into beastron. A repository
 is only used if it is public on GitHub and has a license (recorded in the
 task), and never if it is on the exclusion list.
 """

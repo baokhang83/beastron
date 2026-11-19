@@ -1,7 +1,7 @@
-# Model profiles for firox.
-# Pick one with `firox --model NAME`, or `/model NAME` inside a session.
-# firox looks for this file in the current folder, then ~/.config/firox/models.toml
-# (or wherever FIROX_CONFIG points).
+# Model profiles for beastron.
+# Pick one with `beastron --model NAME`, or `/model NAME` inside a session.
+# beastron looks for this file in the current folder, then ~/.config/beastron/models.toml
+# (or wherever BEASTRON_CONFIG points).
 
 default = "qwen3-8b-local"
 

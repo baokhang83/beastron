@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from firox.tools import ToolError, Workspace, make_tools
+from beastron.tools import ToolError, Workspace, make_tools
 
 
 @pytest.fixture
@@ -86,16 +86,16 @@ def test_edit_not_found_shows_closest_text(tools, ws):
         "class UI:\n"
         "    def header(self):\n"
         "        line = Text()\n"
-        "        line.append(' firox ', style='bold')\n"
+        "        line.append(' beastron ', style='bold')\n"
         "        return line\n"
     )
     # wrong indentation and a slightly different string, as small models produce
-    wrong = "line = Text()\nline.append(' firox ', style='bold cyan')"
+    wrong = "line = Text()\nline.append(' beastron ', style='bold cyan')"
     with pytest.raises(ToolError) as err:
         tools["edit_file"].preview({"path": "ui.py", "old_text": wrong, "new_text": "x"})
     message = str(err.value)
     assert "closest text in the file is lines 3-4" in message
-    assert "        line.append(' firox ', style='bold')" in message  # real indentation shown
+    assert "        line.append(' beastron ', style='bold')" in message  # real indentation shown
 
 
 def test_edit_not_found_without_a_close_match(tools):

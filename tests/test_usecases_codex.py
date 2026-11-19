@@ -4,10 +4,10 @@ import json
 
 from typer.testing import CliRunner
 
-import firox.usecases.codex_logs as codex_logs
-from firox.cli import app
-from firox.usecases.codex_logs import read_all, read_session
-from firox.usecases.requests import load
+import beastron.usecases.codex_logs as codex_logs
+from beastron.cli import app
+from beastron.usecases.codex_logs import read_all, read_session
+from beastron.usecases.requests import load
 
 
 def rec(kind, payload, ts="2026-11-10T05:48:27Z"):
@@ -67,7 +67,7 @@ def test_injected_context_messages_are_not_requests(tmp_path):
 def test_an_excluded_session_is_closed_after_its_first_line(tmp_path, monkeypatch):
     exclude = tmp_path / "exclude.txt"
     exclude.write_text("/work/secret\n")
-    monkeypatch.setenv("FIROX_EXCLUDE", str(exclude))
+    monkeypatch.setenv("BEASTRON_EXCLUDE", str(exclude))
     parsed = []
     original = codex_logs._parse
     monkeypatch.setattr(codex_logs, "_parse", lambda line: parsed.append(line) or original(line))
@@ -78,7 +78,7 @@ def test_an_excluded_session_is_closed_after_its_first_line(tmp_path, monkeypatc
 def test_a_session_moving_into_an_excluded_folder_is_dropped(tmp_path, monkeypatch):
     exclude = tmp_path / "exclude.txt"
     exclude.write_text("/work/secret\n")
-    monkeypatch.setenv("FIROX_EXCLUDE", str(exclude))
+    monkeypatch.setenv("BEASTRON_EXCLUDE", str(exclude))
     records = [meta(), typed("hello"), rec("turn_context", {"cwd": "/work/secret"}), typed("private")]
     assert read_session(write(tmp_path, "d", records)) == []
 
@@ -88,9 +88,9 @@ def test_read_all_and_the_scan_command(tmp_path, monkeypatch):
     write(root, "a", SESSION)
     write(root, "b", [meta(id="other"), typed("what does this repo do?")])
     assert len(read_all(root)) == 4
-    monkeypatch.setenv("FIROX_CODEX_DIR", str(root))
-    monkeypatch.setenv("FIROX_CLAUDE_DIR", str(tmp_path / "no-claude"))
-    monkeypatch.setenv("FIROX_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("BEASTRON_CODEX_DIR", str(root))
+    monkeypatch.setenv("BEASTRON_CLAUDE_DIR", str(tmp_path / "no-claude"))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "state"))
     result = CliRunner().invoke(app, ["usecases", "scan"])
     assert result.exit_code == 0, result.output
     assert "Codex: 4 requests in 2 sessions" in result.output and "Claude Code: 0 requests" in result.output

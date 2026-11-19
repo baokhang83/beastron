@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from firox.cli import app
-from firox.usecases.claude_logs import encode_folder, read_all, read_session
-from firox.usecases.requests import _shell_words, load
+from beastron.cli import app
+from beastron.usecases.claude_logs import encode_folder, read_all, read_session
+from beastron.usecases.requests import _shell_words, load
 
 
 def user(text, **extra):
@@ -65,7 +65,7 @@ def test_requests_and_their_tools(tmp_path):
 
 
 def test_pasted_text_is_kept_without_its_tags():
-    from firox.usecases.claude_logs import _request_text
+    from beastron.usecases.claude_logs import _request_text
     text, _ = _request_text('<pasted_content id="x">\nTraceback ...\n</pasted_content id="x">\nwhat is this?')
     assert text == "Traceback ...\n\nwhat is this?"
 
@@ -80,7 +80,7 @@ def test_excluded_and_observer_sessions_are_never_opened(tmp_path, monkeypatch):
     excluded_project = tmp_path / "Documents" / "secretproject"
     exclude = tmp_path / "exclude.txt"
     exclude.write_text(f"{excluded_project}\n")
-    monkeypatch.setenv("FIROX_EXCLUDE", str(exclude))
+    monkeypatch.setenv("BEASTRON_EXCLUDE", str(exclude))
     root = tmp_path / "projects"
     write_session(root, "-work-shop", "kept", SESSION[:2])
     for folder in (encode_folder(excluded_project.resolve()), "-Users-x--claude-mem-observer-sessions"):
@@ -97,7 +97,7 @@ def test_excluded_and_observer_sessions_are_never_opened(tmp_path, monkeypatch):
 def test_a_session_that_ran_in_an_excluded_folder_is_dropped(tmp_path, monkeypatch):
     exclude = tmp_path / "exclude.txt"
     exclude.write_text("/work/secret\n")
-    monkeypatch.setenv("FIROX_EXCLUDE", str(exclude))
+    monkeypatch.setenv("BEASTRON_EXCLUDE", str(exclude))
     session = [user("hi", cwd="/work/secret/sub")]
     assert read_session(write_session(tmp_path, "-elsewhere", "s", session)) == []
 
@@ -109,8 +109,8 @@ def test_scan_writes_only_to_the_local_state_folder(tmp_path, monkeypatch):
     project = tmp_path / "repo"
     project.mkdir()
     monkeypatch.chdir(project)
-    monkeypatch.setenv("FIROX_CLAUDE_DIR", str(root))
-    monkeypatch.setenv("FIROX_STATE_DIR", str(state))
+    monkeypatch.setenv("BEASTRON_CLAUDE_DIR", str(root))
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(state))
     result = CliRunner().invoke(app, ["usecases", "scan"])
     assert result.exit_code == 0, result.output
     assert "4 requests in 1 sessions" in result.output

@@ -1,7 +1,7 @@
 """Projects the owner never wants used as eval material.
 
 A plain text file, one path per line (`#` starts a comment), at
-`~/.config/firox/exclude.txt` or wherever `FIROX_EXCLUDE` points. Commit replay
+`~/.config/beastron/exclude.txt` or wherever `BEASTRON_EXCLUDE` points. Commit replay
 refuses these repositories, and use-case mining skips their sessions. The file
 is local configuration: it never goes into the repository.
 """
@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 def exclude_file() -> Path:
-    return Path(os.environ.get("FIROX_EXCLUDE") or "~/.config/firox/exclude.txt").expanduser()
+    return Path(os.environ.get("BEASTRON_EXCLUDE") or "~/.config/beastron/exclude.txt").expanduser()
 
 
 def excluded_paths() -> list[Path]:

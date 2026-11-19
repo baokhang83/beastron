@@ -1,8 +1,8 @@
-# Your adjustments to the eval score's category weights. Never overwritten by firox.
+# Your adjustments to the eval score's category weights. Never overwritten by beastron.
 #
 # The weights are measured from your real usage (evals/usecases.json, written by
-# `firox usecases classify --write`). Use this file when the measured mix isn't what you
-# want firox to be judged on. Remove the # to enable a line. See docs/refitting.md.
+# `beastron usecases classify --write`). Use this file when the measured mix isn't what you
+# want beastron to be judged on. Remove the # to enable a line. See docs/refitting.md.
 
 [multiply]   # scale a measured weight
 # fix = 1.5        # count bug fixes 1.5 times as much as measured

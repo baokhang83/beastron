@@ -1,19 +1,19 @@
-# Firox
+# Beastron
 
 **How close can a free, local coding agent get to a hosted one on real work?**
 
-Firox is an **experimental** coding agent for local open-weight models, built to answer that question. It runs entirely on your own machine: no subscription, no per-token cost, and no code sent anywhere. It works with any OpenAI-compatible model server (Ollama, LM Studio, llama.cpp, vLLM).
+Beastron is an **experimental** coding agent for local open-weight models, built to answer that question. It runs entirely on your own machine: no subscription, no per-token cost, and no code sent anywhere. It works with any OpenAI-compatible model server (Ollama, LM Studio, llama.cpp, vLLM).
 
-It is also a measurement project. Firox is compared with Claude Code on the same tasks, drawn from real development work, and the gap is closed one measured change at a time. The target is to complete at least 80% as many of those tasks as Claude Code does. The full plan, the process and the roadmap are in [docs/plan.md](docs/plan.md).
+It is also a measurement project. Beastron is compared with Claude Code on the same tasks, drawn from real development work, and the gap is closed one measured change at a time. The target is to complete at least 80% as many of those tasks as Claude Code does. The full plan, the process and the roadmap are in [docs/plan.md](docs/plan.md).
 
 ## Status: early, and honest about it
 
-Firox handles small, clearly defined tasks. It is **not yet reliable for multi-step changes**. Observations so far, made by hand with `qwen3:8b` on the reference machine (the automated scoreboard doesn't exist yet):
+Beastron handles small, clearly defined tasks. It is **not yet reliable for multi-step changes**. Observations so far, made by hand with `qwen3:8b` on the reference machine (the automated scoreboard doesn't exist yet):
 
 - **Fixing an off-by-one bug** in a small Python project, with tests: correct in 3 of 3 runs with thinking off (about 35 s each), and 1 of 1 with thinking on (181 s).
-- **Summarizing what a project is about:** wrong before firox read the project's docs itself; correct since then, in one step.
-- **Removing a recently added feature** while keeping an unrelated change: none of 3 runs fully correct, each wrong in a different way. firox's own record of changed files was accurate every time.
-- **Answering a question:** the model sometimes tries to edit files instead of answering. You can refuse, and firox then stops instead of letting it retry.
+- **Summarizing what a project is about:** wrong before beastron read the project's docs itself; correct since then, in one step.
+- **Removing a recently added feature** while keeping an unrelated change: none of 3 runs fully correct, each wrong in a different way. beastron's own record of changed files was accurate every time.
+- **Answering a question:** the model sometimes tries to edit files instead of answering. You can refuse, and beastron then stops instead of letting it retry.
 
 Details in [docs/plan.md § Current status](docs/plan.md#7-current-status-and-known-limits).
 
@@ -31,15 +31,15 @@ Details in [docs/plan.md § Current status](docs/plan.md#7-current-status-and-kn
   | `run_shell` | yes, after showing the command |
 
 - **Safety:** file tools can't reach outside the project folder or write inside `.git/`. The read-only `git` tool can't be talked into writing files or running programs. Shell commands run with your user's permissions, so read each one before approving it.
-- **A change record:** after each task, firox lists the files *its tools* changed (`A`/`M`/`D` with line counts). This comes from the tools, not from the model's summary, which can be wrong.
-- **A project briefing:** when a session starts, firox reads the project's documentation (`AGENTS.md`, else `README.md`, plus linked docs) and gives it to the model.
+- **A change record:** after each task, beastron lists the files *its tools* changed (`A`/`M`/`D` with line counts). This comes from the tools, not from the model's summary, which can be wrong.
+- **A project briefing:** when a session starts, beastron reads the project's documentation (`AGENTS.md`, else `README.md`, plus linked docs) and gives it to the model.
 - **Guardrails for small models:**
-  - When a model announces a step but doesn't take it, firox nudges it to continue.
+  - When a model announces a step but doesn't take it, beastron nudges it to continue.
   - Saying "no" to an action ends the turn.
   - A failed edit shows the model the closest matching text from the file.
   - Invalid tool calls go back to the model as errors instead of crashing.
   - A task stops after 25 model calls.
-- **Session traces:** every session is recorded in `~/.local/state/firox/sessions/` as one JSONL file: what you asked, each tool call with its full output, the change record, tokens and timing, the exact model file (its digest) and the project's git state at the start. Traces stay on your machine; `--no-trace` turns them off.
+- **Session traces:** every session is recorded in `~/.local/state/beastron/sessions/` as one JSONL file: what you asked, each tool call with its full output, the change record, tokens and timing, the exact model file (its digest) and the project's git state at the start. Traces stay on your machine; `--no-trace` turns them off.
 - **Any model:** profiles in `models.toml`; switch with `-m` or `/model` during a session.
 
 The eval harness and a 57-task suite drawn from real work exist ([evals/README.md](evals/README.md)); the first score against Claude Code doesn't yet. Not there yet, and planned: that score, undo, summarizing long conversations, automatic test runs, adapting the tools to the model's strength. See the [roadmap](docs/plan.md#6-roadmap).
@@ -51,49 +51,49 @@ The eval harness and a 57-task suite drawn from real work exist ([evals/README.m
 GGML_METAL_TENSOR_DISABLE=1 OLLAMA_CONTEXT_LENGTH=32768 ollama serve
 ollama pull qwen3:8b
 
-# 2. Install firox as a command you can run from any folder.
+# 2. Install beastron as a command you can run from any folder.
 #    --editable: changes to the code here apply immediately, no reinstall needed.
-uv tool install --editable ~/Documents/firox
+uv tool install --editable ~/Documents/beastron
 
 # 3. Make models.toml available from any folder (a link, so there's still one file to edit).
-mkdir -p ~/.config/firox
-ln -s ~/Documents/firox/models.toml ~/.config/firox/models.toml
+mkdir -p ~/.config/beastron
+ln -s ~/Documents/beastron/models.toml ~/.config/beastron/models.toml
 ```
 
-uv puts the `firox` command in `~/.local/bin`. If your shell can't find it,
+uv puts the `beastron` command in `~/.local/bin`. If your shell can't find it,
 run `uv tool update-shell` and open a new terminal.
 
-After changing firox's dependencies in `pyproject.toml`, reinstall once with
-`uv tool install --editable --force ~/Documents/firox`. Code changes need nothing.
+After changing beastron's dependencies in `pyproject.toml`, reinstall once with
+`uv tool install --editable --force ~/Documents/beastron`. Code changes need nothing.
 
 ## Usage
 
-Run firox from the folder of the project you want it to work on. That folder
+Run beastron from the folder of the project you want it to work on. That folder
 is the only place its file tools can read and write.
 
 ```bash
 cd ~/Documents/my-project
-firox                                  # interactive session
-firox "fix the failing test"           # one task, then exit
-firox -m qwen3-8b-fast                 # pick a model profile
-firox -v                               # show reasoning and full tool output
-firox --no-trace                       # don't record the session
-firox eval --help                      # eval commands (being built: see the M0 milestone)
+beastron                                  # interactive session
+beastron "fix the failing test"           # one task, then exit
+beastron -m qwen3-8b-fast                 # pick a model profile
+beastron -v                               # show reasoning and full tool output
+beastron --no-trace                       # don't record the session
+beastron eval --help                      # eval commands (being built: see the M0 milestone)
 ```
 
-Use `firox`, not `uv run firox`: inside another project, `uv run` sets up that
-project's environment and won't find firox.
+Use `beastron`, not `uv run beastron`: inside another project, `uv run` sets up that
+project's environment and won't find beastron.
 
-Firox looks for `models.toml` in this order: the `--config` option, the
-`FIROX_CONFIG` environment variable, the current folder, then
-`~/.config/firox/models.toml`.
+Beastron looks for `models.toml` in this order: the `--config` option, the
+`BEASTRON_CONFIG` environment variable, the current folder, then
+`~/.config/beastron/models.toml`.
 
 Commands inside a session: `/help`, `/models`, `/model NAME`, `/clear`,
 `/context`, `/verbose`, `/quit`. Ctrl-C stops the agent; Ctrl-D quits.
 
 ### Project briefing
 
-When a session starts (and after `/clear`), firox reads the project's
+When a session starts (and after `/clear`), beastron reads the project's
 documentation and gives it to the model, so the model knows what the project
 is before its first step:
 
@@ -123,12 +123,12 @@ context size, plus optional settings:
 | `quirks` | Per-model fixes, e.g. `["send_reasoning_back"]` for gpt-oss |
 | `extra_body` | Extra server-specific request fields |
 
-Firox can also talk to hosted OpenAI-compatible services (for example OpenRouter) through `api_key_env`. That sends your code to the provider, which goes against the point of the project. It's meant for benchmarking only.
+Beastron can also talk to hosted OpenAI-compatible services (for example OpenRouter) through `api_key_env`. That sends your code to the provider, which goes against the point of the project. It's meant for benchmarking only.
 
 ## Layout
 
 ```
-src/firox/
+src/beastron/
   cli.py        entry point, prompt, slash commands
   ui.py         Rich display (listens to agent events)
   agent.py      the loop: model -> tools -> model, until done

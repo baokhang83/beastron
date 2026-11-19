@@ -1,11 +1,11 @@
 """Agent loop tests with a scripted fake model (no server needed)."""
 
-from firox.agent import Agent
-from firox.client import ModelReply, OpenAICompatClient
-from firox.config import ModelProfile
-from firox.events import ToolEnd, TurnEnd
-from firox.quirks import ToolCall
-from firox.tools import Workspace, make_tools
+from beastron.agent import Agent
+from beastron.client import ModelReply, OpenAICompatClient
+from beastron.config import ModelProfile
+from beastron.events import ToolEnd, TurnEnd
+from beastron.quirks import ToolCall
+from beastron.tools import Workspace, make_tools
 
 PROFILE = ModelProfile(name="fake", base_url="http://unused", model="fake", context=1000)
 
@@ -128,7 +128,7 @@ def test_announced_but_not_taken_action_gets_a_nudge(tmp_path):
     )
     assert agent.run("fix it") == "done"
     assert len(client.seen) == 3
-    assert any(m["content"].startswith("[firox]") for m in agent.messages if m["role"] == "user")
+    assert any(m["content"].startswith("[beastron]") for m in agent.messages if m["role"] == "user")
 
 
 def test_nudges_are_limited(tmp_path):
