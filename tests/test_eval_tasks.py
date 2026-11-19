@@ -4,6 +4,7 @@ import textwrap
 
 import pytest
 
+from firox.evals.checks import Check
 from firox.evals.task import TaskError, load_task, load_tasks
 from firox.evals.workspace import WorkspaceError, prepared
 
@@ -46,7 +47,7 @@ def test_load_a_synthetic_task(tmp_path):
     task = load_task(make_task(tmp_path, "fix-bug", SYNTHETIC))
     assert (task.id, task.category, task.source, task.tags) == ("fix-bug", "fix", "synthetic", ("seed", "quick"))
     assert task.workspace.fixture == "repo" and task.timeout == 600 and task.max_steps == 25
-    assert task.checks == [{"type": "command", "run": "true"}]
+    assert task.checks == [Check(type="command", run="true")]
 
 
 @pytest.mark.parametrize("toml, message", [
