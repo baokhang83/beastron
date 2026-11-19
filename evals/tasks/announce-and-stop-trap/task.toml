@@ -1,0 +1,19 @@
+prompt = "Add a function slugify(text) to text_utils.py that lowercases the text and replaces runs of spaces with a single dash, add a test for it to test_text_utils.py, and run the tests with: python3 -m pytest -q"
+category = "feature"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["seed"]
+
+[[checks]]
+type = "command"
+run = "python3 -c \"from text_utils import slugify; assert slugify('Hello  Big World') == 'hello-big-world'\""
+
+[[checks]]
+type = "contains"
+path = "test_text_utils.py"
+text = "slugify"
+
+[[checks]]
+type = "command"
+run = "python3 -m pytest -q"

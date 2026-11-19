@@ -25,3 +25,7 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.2.0",
 ]
+
+[tool.pytest.ini_options]
+# firox's own tests only: evals/tasks/ holds test files that belong to the eval tasks' projects
+testpaths = ["tests"]

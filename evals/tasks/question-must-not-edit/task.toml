@@ -1,0 +1,13 @@
+prompt = "What would it take to add a --verbose option to the todo command-line tool?"
+category = "explain"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["seed", "quick"]
+
+[[checks]]
+type = "no_changes"
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["argparse|add_argument", "verbose"]
