@@ -61,3 +61,22 @@ The task's `timeout` (wall clock) and `max_steps` are enforced. A timeout counts
 Results go to `~/.local/state/firox/evals/runs/<run id>/`:
 - `results.jsonl`: one line per run, with pass/fail, each check's reason, how the turn ended, steps, tokens, time, nudges, tool errors, the change record, the model digest and firox's commit
 - `traces/`: the session trace of every run
+
+## Reports, baselines and regressions
+
+After a run, `firox eval run` prints a report per model profile and writes a **summary** to `evals/results/<run>_<profile>_<firox commit>.json`. Summaries hold pass counts per task and category, timing, the model digest and firox's commit, and no transcripts. Commit them: together they are the score's history.
+
+```bash
+firox eval report                 # the latest run, compared with the baseline
+firox eval report <run folder>    # a specific run
+firox eval report --history       # committed summaries over time, per profile
+firox eval baseline               # store the latest run as the baseline (evals/baselines/<profile>.json)
+```
+
+Compared with the baseline, the report flags:
+- **a task regression:** the task passed in most baseline runs, and now fails in at least 2 of every 3 runs
+- **a category regression:** the pass rate is clearly lower, meaning the 95% confidence ranges (Wilson score) of the two rates don't overlap. With few runs, smaller drops are noise.
+- **a changed model file** (digest), so a model update can't hide inside a score change
+- improvements, and tasks added or removed
+
+`firox eval run` and `firox eval report` exit with status 1 when there is a regression. Until use-case weights exist (milestone M1), the score is the plain average of the category pass rates.
