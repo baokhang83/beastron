@@ -1,0 +1,44 @@
+# Model profiles for firox.
+# Pick one with `firox --model NAME`, or `/model NAME` inside a session.
+# firox looks for this file in the current folder, then ~/.config/firox/models.toml
+# (or wherever FIROX_CONFIG points).
+
+default = "qwen3-8b-local"
+
+[models.qwen3-8b-local]
+base_url = "http://localhost:11434/v1"
+model = "qwen3:8b"
+context = 32768  # keep in sync with OLLAMA_CONTEXT_LENGTH on the server
+
+# Same model with thinking turned off: much faster, weaker on harder tasks.
+[models.qwen3-8b-fast]
+base_url = "http://localhost:11434/v1"
+model = "qwen3:8b"
+context = 32768
+reasoning_effort = "none"
+
+# --- More profiles to try (remove the # to enable) -------------------------
+
+# [models.qwen3-coder-local]
+# base_url = "http://localhost:11434/v1"
+# model = "qwen3-coder:30b"
+# context = 32768
+
+# [models.gpt-oss-local]
+# base_url = "http://localhost:11434/v1"
+# model = "gpt-oss:20b"
+# context = 32768
+# quirks = ["send_reasoning_back"]
+
+# LM Studio serves on port 1234; use the model id it shows.
+# [models.lmstudio]
+# base_url = "http://localhost:1234/v1"
+# model = "qwen/qwen3-8b"
+# context = 32768
+
+# Hosted open-weight models. Your code is sent to the provider.
+# [models.qwen3-coder-openrouter]
+# base_url = "https://openrouter.ai/api/v1"
+# model = "qwen/qwen3-coder"
+# api_key_env = "OPENROUTER_API_KEY"
+# context = 131072
