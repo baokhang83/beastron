@@ -63,7 +63,7 @@ class SessionTrace:
         self._write({"type": "session", **header})
 
     @classmethod
-    def start(cls, ws: Workspace, profile: ModelProfile) -> SessionTrace:
+    def start(cls, ws: Workspace, profile: ModelProfile, directory: Path | None = None) -> SessionTrace:
         now = datetime.now(timezone.utc)
         session_id = uuid.uuid4().hex[:8]
         project = re.sub(r"[^A-Za-z0-9._-]", "_", ws.root.name) or "project"
@@ -83,7 +83,7 @@ class SessionTrace:
             },
             "repo": repo_state(ws),
         }
-        return cls(sessions_dir() / name, header)
+        return cls((directory or sessions_dir()) / name, header)
 
     def __call__(self, event: Event) -> None:
         """Agent event listener."""

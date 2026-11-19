@@ -74,6 +74,6 @@ def test_eval_lists_its_subcommands():
 
 
 def test_eval_commands_not_built_yet_say_which_issue_brings_them():
-    result = invoke("eval", "run")
+    result = invoke("eval", "report")
     assert result.exit_code == 2
-    assert "issues/10" in result.output
+    assert "issues/11" in result.output
