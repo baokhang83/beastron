@@ -67,6 +67,17 @@ class ErrorEvent:
 
 
 TurnEndReason = Literal["done", "denied", "max_steps", "interrupted", "error"]
+ChangeKind = Literal["created", "modified", "deleted"]
+
+
+@dataclass(frozen=True)
+class FileChange:
+    """One file a tool changed. Reported by the tool itself, never by the model."""
+
+    path: str
+    kind: ChangeKind
+    added: int = 0
+    removed: int = 0
 
 
 @dataclass(frozen=True)
@@ -77,6 +88,10 @@ class TurnEnd:
     completion_tokens: int
     elapsed: float
     model_seconds: float
+    # What actually changed this turn, from the tool results. The model's own
+    # summary can be wrong; this can't, except for changes made by shell commands.
+    changes: tuple[FileChange, ...] = ()
+    shell_commands: int = 0
 
 
 Event = (

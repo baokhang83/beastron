@@ -144,6 +144,52 @@ def test_final_summary_is_not_nudged(tmp_path):
     assert len(client.seen) == 1
 
 
+def calls(*specs):
+    """One model reply with several tool calls: specs are (name, arguments) pairs."""
+    return ModelReply(tool_calls=[ToolCall(f"c{i}", name, args) for i, (name, args) in enumerate(specs)])
+
+
+def test_turn_end_reports_real_changes(tmp_path):
+    agent, _, events = make_agent(
+        tmp_path,
+        [
+            calls(
+                ("write_file", '{"path": "new.py", "content": "a\\nb\\n"}'),
+                ("edit_file", '{"path": "new.py", "old_text": "b", "new_text": "c"}'),
+                ("edit_file", '{"path": "hello.txt", "old_text": "hi", "new_text": "hello"}'),
+                ("write_file", '{"path": "tmp.py", "content": "x"}'),
+                ("delete_file", '{"path": "tmp.py"}'),
+                ("run_shell", '{"command": "true"}'),
+            ),
+            ModelReply(content="I rewrote the whole project and verified everything."),
+        ],
+    )
+    agent.run("go")
+    end = events[-1]
+    assert isinstance(end, TurnEnd)
+    record = {c.path: (c.kind, c.added, c.removed) for c in end.changes}
+    assert record == {
+        "new.py": ("created", 3, 1),  # created, then edited: still a new file
+        "hello.txt": ("modified", 1, 1),
+        # tmp.py was created and deleted again: no net change, not listed
+    }
+    assert end.shell_commands == 1
+
+
+def test_changes_reset_each_turn(tmp_path):
+    agent, _, events = make_agent(
+        tmp_path,
+        [
+            call("write_file", '{"path": "a.py", "content": "x"}'),
+            ModelReply(content="done"),
+            ModelReply(content="nothing to do"),
+        ],
+    )
+    agent.run("first")
+    agent.run("second")
+    assert events[-1].changes == () and events[-1].shell_commands == 0
+
+
 def test_interrupt_repairs_history(tmp_path):
     def interrupt(req):
         raise KeyboardInterrupt
