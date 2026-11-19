@@ -1,8 +1,47 @@
 # Firox
 
-A coding agent for local and open-weight models. Firox talks to any
-OpenAI-compatible server (Ollama, LM Studio, llama.cpp, vLLM, OpenRouter), and
-you can switch models with one setting.
+**How close can a free, local coding agent get to a hosted one on real work?**
+
+Firox is an **experimental** coding agent for local open-weight models, built to answer that question. It runs entirely on your own machine: no subscription, no per-token cost, and no code sent anywhere. It works with any OpenAI-compatible model server (Ollama, LM Studio, llama.cpp, vLLM).
+
+It is also a measurement project. Firox is compared with Claude Code on the same tasks, drawn from real development work, and the gap is closed one measured change at a time. The target is to complete at least 80% as many of those tasks as Claude Code does. The full plan, the process and the roadmap are in [docs/plan.md](docs/plan.md).
+
+## Status: early, and honest about it
+
+Firox handles small, clearly defined tasks. It is **not yet reliable for multi-step changes**. Observations so far, made by hand with `qwen3:8b` on the reference machine (the automated scoreboard doesn't exist yet):
+
+- **Fixing an off-by-one bug** in a small Python project, with tests: correct in 3 of 3 runs with thinking off (about 35 s each), and 1 of 1 with thinking on (181 s).
+- **Summarizing what a project is about:** wrong before firox read the project's docs itself; correct since then, in one step.
+- **Removing a recently added feature** while keeping an unrelated change: none of 3 runs fully correct, each wrong in a different way. firox's own record of changed files was accurate every time.
+- **Answering a question:** the model sometimes tries to edit files instead of answering. You can refuse, and firox then stops instead of letting it retry.
+
+Details in [docs/plan.md § Current status](docs/plan.md#7-current-status-and-known-limits).
+
+**Reference machine:** Apple M5, 24 GB unified memory. `qwen3:8b` generates about 20–26 tokens/s there and uses about 9.4 GB with a 32K context. Nothing has been measured on other machines yet.
+
+## What it does today
+
+- **An agent loop with tools:**
+
+  | Tool | Approval |
+  |---|---|
+  | `list_files`, `search_code`, `read_file` | no |
+  | `git` (read-only: `status`, `diff`, `log`, `show`) | no |
+  | `write_file`, `edit_file`, `delete_file` | yes, after showing a diff |
+  | `run_shell` | yes, after showing the command |
+
+- **Safety:** file tools can't reach outside the project folder or write inside `.git/`. The read-only `git` tool can't be talked into writing files or running programs. Shell commands run with your user's permissions, so read each one before approving it.
+- **A change record:** after each task, firox lists the files *its tools* changed (`A`/`M`/`D` with line counts). This comes from the tools, not from the model's summary, which can be wrong.
+- **A project briefing:** when a session starts, firox reads the project's documentation (`AGENTS.md`, else `README.md`, plus linked docs) and gives it to the model.
+- **Guardrails for small models:**
+  - When a model announces a step but doesn't take it, firox nudges it to continue.
+  - Saying "no" to an action ends the turn.
+  - A failed edit shows the model the closest matching text from the file.
+  - Invalid tool calls go back to the model as errors instead of crashing.
+  - A task stops after 25 model calls.
+- **Any model:** profiles in `models.toml`; switch with `-m` or `/model` during a session.
+
+Not there yet, and planned: automated evals and a score, undo, summarizing long conversations, automatic test runs, adapting the tools to the model's strength. See the [roadmap](docs/plan.md#6-roadmap).
 
 ## Setup
 
@@ -81,29 +120,25 @@ context size, plus optional settings:
 | `quirks` | Per-model fixes, e.g. `["send_reasoning_back"]` for gpt-oss |
 | `extra_body` | Extra server-specific request fields |
 
-## Tools
-
-| Tool | Approval |
-|---|---|
-| `list_files`, `search_code`, `read_file` | no |
-| `write_file`, `edit_file` | yes, after showing a diff |
-| `run_shell` | yes, after showing the command |
-
-File tools can't reach paths outside the folder firox runs in, and can't write
-inside `.git/`. Shell commands run with your user's permissions, so read each
-one before approving it.
+Firox can also talk to hosted OpenAI-compatible services (for example OpenRouter) through `api_key_env`. That sends your code to the provider, which goes against the point of the project. It's meant for benchmarking only.
 
 ## Layout
 
 ```
 src/firox/
-  cli.py      entry point, prompt, slash commands
-  ui.py       Rich display (listens to agent events)
-  agent.py    the loop: model -> tools -> model, until done
-  events.py   what the agent reports while it works
-  client.py   OpenAI-compatible model client
-  quirks.py   fixes for model-specific behavior
-  config.py   models.toml loading
-  tools/      file tools, shell tool, sandbox
-tests/        uv run pytest
+  cli.py        entry point, prompt, slash commands
+  ui.py         Rich display (listens to agent events)
+  agent.py      the loop: model -> tools -> model, until done
+  events.py     what the agent reports while it works, including the change record
+  briefing.py   reads the project's docs at session start
+  client.py     OpenAI-compatible model client
+  quirks.py     fixes for model-specific behavior
+  config.py     models.toml loading
+  tools/        file tools, read-only git, shell, sandbox
+tests/          uv run pytest
+docs/plan.md    goal, process, architecture, roadmap
 ```
+
+## License
+
+[Apache-2.0](LICENSE).
