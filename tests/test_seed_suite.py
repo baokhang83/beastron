@@ -18,10 +18,21 @@ TASKS = Path(__file__).resolve().parents[1] / "evals" / "tasks"
 SEED = load_tasks(TASKS, tag="seed")
 
 
+# The versions the Maven tasks pin; `mvn -o` only works where all of them are cached.
+PINNED_MAVEN = [
+    "org/apache/maven/plugins/maven-compiler-plugin/3.13.0",
+    "org/apache/maven/plugins/maven-surefire-plugin/3.5.2",
+    "org/apache/maven/plugins/maven-resources-plugin/3.3.1",
+    "org/junit/jupiter/junit-jupiter/5.11.4",
+]
+
+
 def needs_missing_tool(task):
-    """Maven tasks can only be checked where mvn and the offline cache exist (not in CI)."""
+    """Maven tasks can only be checked where mvn and the pinned versions are cached (not on CI's runners)."""
     uses_mvn = any(c.type == "command" and c.run.startswith("mvn") for c in task.checks)
-    return uses_mvn and (shutil.which("mvn") is None or not (Path.home() / ".m2" / "repository").is_dir())
+    repository = Path.home() / ".m2" / "repository"
+    cached = all((repository / path).is_dir() for path in PINNED_MAVEN)
+    return uses_mvn and (shutil.which("mvn") is None or not cached)
 
 
 def test_the_seed_suite_has_eight_tasks_across_categories():
