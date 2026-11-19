@@ -30,5 +30,7 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      - name: Run tests
+      # Includes the eval harness end to end (tests/test_eval_harness_e2e.py): real seed
+      # tasks with a scripted model, so no model server, GPU or network is needed.
+      - name: Run tests (unit tests and the eval harness with a scripted model)
         run: uv run pytest -q

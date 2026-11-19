@@ -99,3 +99,12 @@ Eight synthetic tasks (`-s seed`; five of them also tagged `quick`) covering the
 The Maven tasks pin plugin and JUnit versions that are in the local `~/.m2` cache and build offline (`mvn -o`).
 
 Every task has a `solution/` folder: the files a correct solution changes, plus `answer.md` for tasks whose result is an answer. `tests/test_seed_suite.py` checks that every task **fails on its original project** and **passes with its solution**, which rules out impossible tasks and tasks that pass without any work. Writing a new task? Add its solution and this test covers it.
+
+## In CI
+
+CI has no GPU and no model server, so it tests the harness with a **scripted model** (`tests/scripted.py`): real seed tasks, replayed tool calls, no network. `tests/test_eval_harness_e2e.py` checks:
+- a scripted pass and a scripted fail produce the expected summary
+- turning a pass into a fail is flagged as a regression
+- `firox eval run`, `baseline` and `report` work end to end, including exit code 1 on a regression
+
+Real model runs happen on the reference machine.
