@@ -125,6 +125,7 @@ def reference(
     model: Annotated[str, typer.Option("--model", "-m", help="The pinned Claude model.")] = reference_runner.DEFAULT_MODEL,
     repeats: Annotated[int, typer.Option("--repeats", "-n", min=1, help="Runs per task.")] = 3,
     claude: Annotated[str, typer.Option(help="The Claude Code command.")] = "claude",
+    resume: Annotated[Path | None, typer.Option(help="Continue this run folder: runs already recorded in it are skipped.")] = None,
     tasks_dir: Annotated[Path, typer.Option(help="Folder with the eval tasks.")] = TASKS_DIR,
     keep: Annotated[bool, typer.Option(help="Keep each run's workspace for inspection.")] = False,
     unsafe_no_sandbox: Annotated[
@@ -162,8 +163,12 @@ def reference(
     try:
         run_dir, results = reference_runner.run_reference_suite(
             tasks, model=model, claude=claude, repeats=repeats, progress=_progress(console, total),
-            use_sandbox=not unsafe_no_sandbox, keep=keep,
+            use_sandbox=not unsafe_no_sandbox, keep=keep, run_dir=resume,
         )
+    except reference_runner.LimitReached as e:
+        console.print(f"[yellow]Stopped: the usage limit was reached ({escape(str(e)[:200])}). That session isn't recorded; "
+                      "finished runs are saved. Continue later with --resume <run folder>.[/]")
+        raise typer.Exit(75) from None
     except KeyboardInterrupt:
         console.print("[yellow]Stopped. Finished runs are saved.[/]")
         raise typer.Exit(130) from None

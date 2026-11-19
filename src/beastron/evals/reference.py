@@ -39,6 +39,7 @@ from typing import Any
 from ..trace import beastron_version
 from . import sandbox
 from .checks import Context, evaluate, snapshot
+from .report import load_results
 from .runner import RunResult, _append, _write_json, new_run_dir
 from .task import Task
 from .workspace import WorkspaceError, prepared
@@ -51,6 +52,11 @@ FLAGS = (
 # Set by a Claude Code session for its own child processes; a nested run must not inherit them.
 PARENT_ENV = ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SSE_PORT")
 STDERR_TAIL = 600
+LIMIT_MARKERS = ("hit your", "usage limit", "rate limit")  # in Claude Code's message when the account's limit is reached
+
+
+class LimitReached(Exception):
+    """The account's usage limit stopped Claude Code: the run says nothing about the task, so it isn't recorded."""
 
 
 def profile_name(model: str) -> str:
@@ -117,8 +123,14 @@ def run_reference_task(
     except (WorkspaceError, sandbox.SandboxError, OSError) as e:
         result.error = str(e)
     result.seconds = round(time.monotonic() - started, 2)
+    if limit_hit(result):
+        raise LimitReached(result.error)
     _append(run_dir / "results.jsonl", result)
     return result
+
+
+def limit_hit(result: RunResult) -> bool:
+    return result.reason == "error" and any(m in (result.error or "").lower() for m in LIMIT_MARKERS)
 
 
 def run_reference_suite(
@@ -131,10 +143,13 @@ def run_reference_suite(
     progress: Callable[[RunResult], None] | None = None,
     **kwargs: Any,
 ) -> tuple[Path, list[RunResult]]:
+    """Run every task `repeats` times. With an existing `run_dir`, runs already recorded there are skipped,
+    so a run stopped by the usage limit (LimitReached) can be continued."""
     run_dir = run_dir or new_run_dir()
     (run_dir / "traces").mkdir(parents=True, exist_ok=True)
     version = claude_version(claude)
-    _write_json(run_dir / "run.json", {
+    done = {(r["task"], r["repeat"]) for r in load_results(run_dir)} if (run_dir / "results.jsonl").is_file() else set()
+    _write_json(run_dir / ("run.json" if not done else f"run-resumed-{int(time.time())}.json"), {
         "started_at": datetime.now(timezone.utc).isoformat(),
         "tasks": [t.id for t in tasks],
         "profiles": [profile_name(model)],
@@ -146,6 +161,8 @@ def run_reference_suite(
     results = []
     for task in tasks:
         for repeat in range(1, repeats + 1):
+            if (task.id, repeat) in done:
+                continue
             result = run_reference_task(task, model=model, claude=claude, version=version, repeat=repeat,
                                         run_dir=run_dir, **kwargs)
             results.append(result)
