@@ -1,0 +1,22 @@
+prompt = "parse_duration in durations.py has no tests. Write tests for it in test_durations.py, covering hours, minutes, seconds, combinations and invalid input. Then run them with: python3 -m pytest -q"
+category = "tests"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full"]
+
+[[checks]]
+type = "file_exists"
+path = "test_durations.py"
+
+[[checks]]
+type = "command"
+run = "python3 -m pytest -q"
+
+[[checks]]
+type = "command"
+run = "python3 - <<'PY'\nimport pathlib, shutil, subprocess, sys, tempfile\nsrc = pathlib.Path(\"durations.py\").read_text()\nmutants = [(\"* 3600\", \"* 360\"), (\"* 60\", \"* 6\"), (\"raise ValueError\", \"return 0  #\")]\nfor old, new in mutants:\n    assert old in src, old\n    with tempfile.TemporaryDirectory() as tmp:\n        for name in (\"durations.py\", \"test_durations.py\"):\n            shutil.copy(name, tmp)\n        pathlib.Path(tmp, \"durations.py\").write_text(src.replace(old, new, 1))\n        result = subprocess.run([sys.executable, \"-m\", \"pytest\", \"-q\", \"-p\", \"no:cacheprovider\"], cwd=tmp, capture_output=True)\n        if result.returncode == 0:\n            sys.exit(f\"the tests don't catch an injected bug: {old!r} -> {new!r}\")\nPY"
+
+[[checks]]
+type = "unchanged"
+paths = ["durations.py"]

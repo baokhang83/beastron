@@ -1,0 +1,21 @@
+prompt = "Tag the current commit as release v1.2.0, with an annotated tag whose message is the headline of the 1.2.0 section in CHANGELOG.md."
+category = "git"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full"]
+
+[workspace]
+setup = "setup.sh"
+
+[[checks]]
+type = "command"
+run = "test \"$(git cat-file -t v1.2.0)\" = tag"
+
+[[checks]]
+type = "command"
+run = "test \"$(git rev-parse \"v1.2.0^{commit}\")\" = \"$(git rev-parse HEAD)\""
+
+[[checks]]
+type = "command"
+run = "git tag -n1 -l v1.2.0 | grep -qi 'faster exports'"

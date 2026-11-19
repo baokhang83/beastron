@@ -1,0 +1,20 @@
+prompt = "What does blastradius-cache-warmer restore before a Maven build, and what happens when it can't?"
+category = "explain"
+language = "java"
+source = "commit-replay"
+timeout = 600
+tags = ["full", "repo-question"]
+
+[workspace]
+url = "https://github.com/baokhang83/blastradius-cache-warmer"
+commit = "53791f59af05192cedeaef18c93a5ed2a9d96ad9"
+repo = "~/Documents/blastradius-cache-warmer"
+license = "Apache-2.0"
+at = "commit"
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["\\.m2|local repository|dependenc", "target/classes|bytecode|compil", "fail.?s?.?open|cold"]
+
+[[checks]]
+type = "no_changes"

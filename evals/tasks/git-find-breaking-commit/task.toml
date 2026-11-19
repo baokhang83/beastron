@@ -1,0 +1,16 @@
+prompt = "test_totals.py fails on main, but it passed when it was written. Which commit broke it? Give the commit's short hash and say what it changed."
+category = "git"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full", "quick"]
+
+[workspace]
+setup = "setup.sh"
+
+[[checks]]
+type = "answer_mentions"
+patterns = ["a6020b4", "discount|total\\(\\)|totals\\.py"]
+
+[[checks]]
+type = "no_changes"

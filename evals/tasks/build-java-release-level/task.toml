@@ -1,0 +1,19 @@
+prompt = "The build fails to compile. Fix the build configuration, not the Java code. Check with: mvn -o -q test"
+category = "build"
+language = "java"
+source = "synthetic"
+timeout = 600
+tags = ["full"]
+
+[[checks]]
+type = "command"
+run = "mvn -o -q test"
+timeout = 300
+
+[[checks]]
+type = "unchanged"
+paths = ["src"]
+
+[[checks]]
+type = "only_changed"
+paths = ["pom.xml"]

@@ -1,0 +1,22 @@
+prompt = "register() and update_email() in users.py duplicate the same email validation. Extract it into one helper function that both call, without changing behaviour. Then run the tests with: python3 -m pytest -q"
+category = "refactor"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full"]
+
+[[checks]]
+type = "command"
+run = "python3 -m pytest -q"
+
+[[checks]]
+type = "command"
+run = "python3 -c \"s = open('users.py').read(); n = s.count('re.fullmatch'); assert n == 1, n\""
+
+[[checks]]
+type = "command"
+run = "python3 -c \"import ast; t = ast.parse(open('users.py').read()); assert len([n for n in t.body if isinstance(n, ast.FunctionDef)]) >= 3\""
+
+[[checks]]
+type = "unchanged"
+paths = ["test_users.py"]

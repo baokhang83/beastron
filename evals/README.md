@@ -83,9 +83,38 @@ Compared with the baseline, the report flags:
 
 **The score is usage-weighted:** each category's pass rate counts as much as that kind of task occurs in the owner's real work, per `evals/usecases.json` (see [usecases.md](usecases.md), produced by `firox usecases scan` and `firox usecases classify --write`). Categories without a weight fall back to equal weights; the report says which was used.
 
-## Seed suite
+## The suite
 
-Eight synthetic tasks (`-s seed`; five of them also tagged `quick`) covering the failure types seen while building firox:
+46 tasks, composed after the owner's real usage (see [usecases.md](usecases.md)): every category has at least 2 tasks, and most are Java, like most of the owner's work.
+
+| category | tasks | share of real usage |
+|---|---:|---:|
+| fix | 9 | 8.7% |
+| explain | 9 | 29.1% |
+| feature | 8 | 24.5% |
+| git | 6 | 17.8% |
+| build | 3 | 6.0% |
+| docs | 3 | 9.4% |
+| config, refactor, remove, tests | 2 each | 4.4% together |
+
+The score weights categories by their share of real usage, so fix tasks (many, because commit replays are mostly fixes) count for less than explain or feature tasks.
+
+**Where the tasks come from** (`tags`):
+- `seed` (8): synthetic tasks for the failure types seen while building firox (see below)
+- `replay` (13): commits from the owner's public repositories (blastradius, mnemo-jvm-warden, blastradius-cache-warmer, mnemo-warmup), replayed from their parent with their tests in place
+- `repo-question` (5): questions about those repositories at a pinned commit, checked for the facts the answer must contain
+- the rest: synthetic tasks for git, docs, build, remove, refactor, tests and config work
+- `quick` (12): the fast subset for checking a change before merging; `full`: everything
+
+**Verifying the suite:** `firox eval verify` checks every task (or `-s`/`-t` a subset) with no model involved: it must fail as given and pass with its reference solution. Reference solutions:
+- a replayed commit: the commit itself
+- any other task: its `solution/` folder, with files to overlay, `answer.md` for answers, and `solution.sh` for solutions that are commands (git operations)
+
+The two checks run in separate workspaces, so build output from one can't affect the other. `tests/test_suite.py` verifies the synthetic tasks in CI. Tasks built on the owner's repositories need the local clones and the Maven cache, so they are verified with `firox eval verify` on the reference machine, and CI only checks that they reference a public commit with a compatible license and contain no code.
+
+**Tasks that check tests** (`tests-*`) also check that the tests catch bugs: the check injects small bugs into the code under test and requires the new tests to fail.
+
+### The seed tasks
 
 | task | category | what it tests |
 |---|---|---|
@@ -99,8 +128,6 @@ Eight synthetic tasks (`-s seed`; five of them also tagged `quick`) covering the
 | `announce-and-stop-trap` | feature | a task with several steps (code, test, run); small models tend to announce the steps and stop |
 
 The Maven tasks pin plugin and JUnit versions that are in the local `~/.m2` cache and build offline (`mvn -o`).
-
-Every task has a `solution/` folder: the files a correct solution changes, plus `answer.md` for tasks whose result is an answer. `tests/test_seed_suite.py` checks that every task **fails on its original project** and **passes with its solution**, which rules out impossible tasks and tasks that pass without any work. Writing a new task? Add its solution and this test covers it.
 
 ## In CI
 
@@ -123,4 +150,5 @@ firox eval add --repo ~/Documents/blastradius --commit 398e105
 - **A candidate** is a small commit (default: at most 3 files and 150 changed lines) that changes source code *and* tests. The repository's first commit is never one, since it has no parent.
 - **The workspace** is the repository at the commit's parent, with the commit's tests put in place. The task: make those tests pass without changing them. The checks: run those tests (offline for Maven), keep them unchanged, and change nothing outside the files the commit changed.
 - **`add` drafts the task** from the commit message, then **verifies** it: the checks must fail on the parent commit and pass on the real commit. It shows the draft and writes it only after you approve.
+- **Questions about a repository** use `at = "commit"`: the workspace is the repository *at* the pinned commit, and the reference solution is `solution/answer.md`.
 - **Only public commits are referenced:** the repository's URL and the commit hash. No code is copied into firox. A repository must be public on GitHub (checked with `gh`) and have a license, which is recorded in the task. Repositories on the exclusion list are refused. If the local clone (`repo`) is missing, the workspace is cloned from `url`.

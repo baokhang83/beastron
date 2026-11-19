@@ -1,0 +1,30 @@
+prompt = "The usage section of README.md no longer matches the command-line options in export.py. Update the README to match the code (don't change the code)."
+category = "docs"
+language = "python"
+source = "synthetic"
+timeout = 300
+tags = ["full", "quick"]
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "--format"
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "--out"
+
+[[checks]]
+type = "not_contains"
+path = "README.md"
+text = "--output-format"
+
+[[checks]]
+type = "not_contains"
+path = "README.md"
+text = "--file"
+
+[[checks]]
+type = "unchanged"
+paths = ["export.py"]

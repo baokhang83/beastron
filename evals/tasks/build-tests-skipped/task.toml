@@ -1,0 +1,19 @@
+prompt = "CI reports a green build, but the tests never actually run. Fix the build so that `mvn -o test` runs them."
+category = "build"
+language = "java"
+source = "synthetic"
+timeout = 600
+tags = ["full"]
+
+[[checks]]
+type = "command"
+run = "mvn -o test | grep -q 'Tests run: 2'"
+timeout = 300
+
+[[checks]]
+type = "unchanged"
+paths = ["src"]
+
+[[checks]]
+type = "only_changed"
+paths = ["pom.xml"]
