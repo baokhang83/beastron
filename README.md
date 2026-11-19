@@ -42,7 +42,7 @@ Details in [docs/plan.md § Current status](docs/plan.md#7-current-status-and-kn
 - **Session traces:** every session is recorded in `~/.local/state/firox/sessions/` as one JSONL file: what you asked, each tool call with its full output, the change record, tokens and timing, the exact model file (its digest) and the project's git state at the start. Traces stay on your machine; `--no-trace` turns them off.
 - **Any model:** profiles in `models.toml`; switch with `-m` or `/model` during a session.
 
-The eval harness and a 46-task suite drawn from real work exist ([evals/README.md](evals/README.md)); the first score against Claude Code doesn't yet. Not there yet, and planned: that score, undo, summarizing long conversations, automatic test runs, adapting the tools to the model's strength. See the [roadmap](docs/plan.md#6-roadmap).
+The eval harness and a 57-task suite drawn from real work exist ([evals/README.md](evals/README.md)); the first score against Claude Code doesn't yet. Not there yet, and planned: that score, undo, summarizing long conversations, automatic test runs, adapting the tools to the model's strength. See the [roadmap](docs/plan.md#6-roadmap).
 
 ## Setup
 

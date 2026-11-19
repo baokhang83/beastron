@@ -305,6 +305,10 @@ def add(
     try:
         info = commits.repo_info(repo)
         sha = commits._git(info.path, "rev-parse", "--verify", f"{commit}^{{commit}}").strip()
+        if not commits.is_published(info.path, sha):
+            raise commits.MinerError(
+                f"{commit} isn't on {commits.published_ref(info.path)}, the published default branch: a task must "
+                "reference a commit that stays public (fetch origin, or use the commit that reached main)")
         [candidate] = [c for c in commits.candidates(info.path, scan=100_000, max_files=10**6, max_lines=10**9)
                        if c.sha == sha] or [None]
         if candidate is None:

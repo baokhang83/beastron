@@ -1,0 +1,42 @@
+prompt = "Add an Installation section to README.md that shows the Maven dependency for this library, with the coordinates from pom.xml, and the minimum Java version it needs."
+category = "docs"
+language = "java"
+source = "synthetic"
+timeout = 300
+tags = ["full"]
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "^#+\\s*Install"
+regex = true
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "<groupId>io.example.money</groupId>"
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "<artifactId>money-core</artifactId>"
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "<version>2.3.1</version>"
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "(Java|JDK)\\s*17"
+regex = true
+
+[[checks]]
+type = "contains"
+path = "README.md"
+text = "Money total = new Money(1999).plus(new Money(1));"
+
+[[checks]]
+type = "only_changed"
+paths = ["README.md"]

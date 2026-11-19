@@ -1,0 +1,42 @@
+prompt = "Rename the method Pricing.calcTot to calculateTotal everywhere it's declared or used, including the tests, without changing what it does. Then run the tests with: mvn -o -q test"
+category = "refactor"
+language = "java"
+source = "synthetic"
+timeout = 600
+tags = ["full", "quick"]
+
+[[checks]]
+type = "not_contains"
+path = "src/main/java/com/example/Pricing.java"
+text = "calcTot"
+
+[[checks]]
+type = "not_contains"
+path = "src/main/java/com/example/Cart.java"
+text = "calcTot"
+
+[[checks]]
+type = "not_contains"
+path = "src/main/java/com/example/Invoice.java"
+text = "calcTot"
+
+[[checks]]
+type = "not_contains"
+path = "src/test/java/com/example/PricingTest.java"
+text = "calcTot"
+
+[[checks]]
+type = "contains"
+path = "src/main/java/com/example/Pricing.java"
+text = "\\bcalculateTotal\\s*\\("
+regex = true
+
+[[checks]]
+type = "command"
+run = "mvn -o -q test"
+timeout = 300
+
+[[checks]]
+type = "contains"
+path = "src/test/java/com/example/PricingTest.java"
+text = "void invoiceShowsTheTotal()"

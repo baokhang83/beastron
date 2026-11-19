@@ -1,0 +1,23 @@
+prompt = "register() and updateEmail() in Users.java duplicate the same email validation. Extract it into one private method that both call, without changing behaviour. Then run the tests with: mvn -o -q test"
+category = "refactor"
+language = "java"
+source = "synthetic"
+timeout = 600
+tags = ["full"]
+
+[[checks]]
+type = "command"
+run = "mvn -o -q test"
+timeout = 300
+
+[[checks]]
+type = "command"
+run = "python3 -c \"s = open('src/main/java/com/example/Users.java').read(); n, m = s.count('.matcher('), s.count('toLowerCase('); assert (n, m) == (1, 1), (n, m)\""
+
+[[checks]]
+type = "command"
+run = "grep -Eq 'private (static )?[A-Za-z<>, ]+ [a-zA-Z]+\\(String' src/main/java/com/example/Users.java"
+
+[[checks]]
+type = "unchanged"
+paths = ["src/test/java/com/example/UsersTest.java"]
