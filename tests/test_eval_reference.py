@@ -226,3 +226,16 @@ def test_a_stopped_run_continues_where_it_left_off(tmp_path, claude, monkeypatch
     _, results = reference.run_reference_suite([task], claude=str(claude[0]), repeats=3, run_dir=run_dir, use_sandbox=False)
     assert [r.repeat for r in results] == [2, 3]
     assert [l["repeat"] for l in lines(run_dir)] == [1, 2, 3]
+
+
+def test_a_resumed_run_reports_all_its_results(tmp_path, claude, monkeypatch):
+    monkeypatch.setenv("BEASTRON_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("FAKE_CLAUDE_MODE", "pass")
+    task = make_task(tmp_path)
+    run_dir = tmp_path / "state" / "evals" / "runs" / "20260101T000000Z_abc123"
+    reference.run_reference_suite([task], claude=str(claude[0]), repeats=1, run_dir=run_dir, use_sandbox=False)
+    out = CliRunner().invoke(cli.app, ["eval", "reference", "--tasks-dir", str(task.dir.parent), "-n", "3", "--resume", str(run_dir),
+                                       "--claude", str(claude[0]), "--unsafe-no-sandbox", "--results-dir", str(tmp_path / "results"),
+                                       "--baselines-dir", str(tmp_path / "baselines")])
+    assert out.exit_code == 0, out.output
+    assert "3/3 runs passed" in out.output
