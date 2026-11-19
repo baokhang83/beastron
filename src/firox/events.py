@@ -66,7 +66,7 @@ class ErrorEvent:
     message: str
 
 
-TurnEndReason = Literal["done", "max_steps", "interrupted", "error"]
+TurnEndReason = Literal["done", "denied", "max_steps", "interrupted", "error"]
 
 
 @dataclass(frozen=True)

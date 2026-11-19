@@ -72,15 +72,31 @@ def test_unknown_tool(tmp_path):
     assert "no tool named 'delete_everything'" in tool_results(agent)[0]
 
 
-def test_denied_approval(tmp_path):
-    agent, _, events = make_agent(
+def test_denial_ends_the_turn(tmp_path):
+    agent, client, events = make_agent(
         tmp_path,
-        [call("run_shell", '{"command": "rm -rf /"}'), ModelReply(content="ok")],
+        [call("run_shell", '{"command": "rm -rf /"}'), ModelReply(content="I'll try again")],
         approve=lambda req: False,
     )
-    agent.run("go")
+    assert agent.run("go") == "denied"
+    assert len(client.seen) == 1  # the model is not asked again
     assert "denied" in tool_results(agent)[0]
     assert any(isinstance(e, ToolEnd) and e.summary == "denied" for e in events)
+
+
+def test_calls_after_a_denial_are_skipped(tmp_path):
+    reply = ModelReply(
+        tool_calls=[
+            ToolCall("c1", "run_shell", '{"command": "ls"}'),
+            ToolCall("c2", "write_file", '{"path": "x.txt", "content": "x"}'),
+        ]
+    )
+    asked = []
+    agent, _, _ = make_agent(tmp_path, [reply], approve=lambda req: asked.append(req.tool) or False)
+    assert agent.run("go") == "denied"
+    assert asked == ["run_shell"]  # never asked about write_file
+    assert "Not run" in tool_results(agent)[1]
+    assert not (tmp_path / "x.txt").exists()
 
 
 def test_invalid_edit_never_asks_for_approval(tmp_path):

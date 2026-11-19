@@ -85,6 +85,8 @@ def _repl(agent: Agent, ui: RichUI, cfg: Config) -> None:
             break
         if not line:
             continue
+        if line.lower() in ("exit", "quit", ":q"):  # people type these without the slash
+            break
         if line.startswith("/"):
             if _command(line, agent, ui, cfg) == "quit":
                 break
