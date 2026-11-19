@@ -30,6 +30,11 @@ from .tools import Tool, ToolError, ToolResult, Workspace
 
 MAX_TOOL_OUTPUT = 20_000  # characters; a last safety net, tools clip their own output first
 MAX_NUDGES = 2  # per user message
+DENIED_MESSAGE = (
+    "The user denied this action. Your turn is over; the user will tell you what to do next. "
+    "Do not repeat this action unless they ask for it."
+)
+SKIPPED_AFTER_DENIAL = "Not run: the user denied an earlier action in this reply."
 
 # Small models often end a reply with "Let's fix it..." and no tool call. A
 # reply without a tool call ends the turn, so the work never happens. When the
@@ -52,6 +57,8 @@ SYSTEM_PROMPT = """\
 You are firox, a coding agent. You work on the project in {root} using the tools provided.
 
 How to work:
+- If the user asks a question ("how does...", "what would it take to...", "why..."), answer it.
+  Look at the code if that helps, but do not change any file unless the user asks you to make the change.
 - Explore before changing anything: use list_files and search_code to find the relevant code, then read_file.
 - Always read a file before editing it. Use edit_file for changes to existing files; old_text must be copied exactly from the file.
 - Use write_file only to create new files or when replacing a whole file is clearly simpler.
@@ -137,9 +144,17 @@ class Agent:
                         self.messages.append({"role": "user", "content": NUDGE_MESSAGE})
                         continue
                     return finish("done")
+                # A denial ends the turn: the user said no, so control goes back
+                # to them instead of letting the model try again on its own.
+                denied = False
                 for call in reply.tool_calls:
-                    output = self._execute(call)
+                    if denied:
+                        output = SKIPPED_AFTER_DENIAL
+                    else:
+                        output, denied = self._execute(call)
                     self.messages.append({"role": "tool", "tool_call_id": call.id, "content": output})
+                if denied:
+                    return finish("denied")
             return finish("max_steps")
         except KeyboardInterrupt:
             self._repair_history()
@@ -148,7 +163,8 @@ class Agent:
             self.emit(ErrorEvent(str(e)))
             return finish("error")
 
-    def _execute(self, call: ToolCall) -> str:
+    def _execute(self, call: ToolCall) -> tuple[str, bool]:
+        """Run one tool call. Returns (output for the model, whether the user denied it)."""
         tool = self.tools.get(call.name)
         try:
             args = json.loads(call.arguments or "{}")
@@ -175,7 +191,7 @@ class Agent:
         output = result.output
         if len(output) > MAX_TOOL_OUTPUT:
             output = output[:MAX_TOOL_OUTPUT] + f"\n[... output cut at {MAX_TOOL_OUTPUT} characters]"
-        return output
+        return output, result.denied
 
     def _run_tool(self, tool: Tool, args: dict) -> ToolResult:
         try:
@@ -183,12 +199,7 @@ class Agent:
             if tool.preview is not None:
                 preview = tool.preview(args)  # also validates; raises ToolError on a bad call
                 if not self.approve(ApprovalRequest(tool.name, args, preview)):
-                    return ToolResult(
-                        "The user denied this action. Do not retry it unchanged; "
-                        "ask the user what they want or try a different approach.",
-                        "denied",
-                        ok=False,
-                    )
+                    return ToolResult(DENIED_MESSAGE, "denied", ok=False, denied=True)
             return tool.run(args)
         except ToolError as e:
             return ToolResult(f"Error: {e}", str(e).split(". ")[0][:80], ok=False)
