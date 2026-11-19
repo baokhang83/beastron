@@ -78,7 +78,7 @@ def test_missing_fixture_and_setup_are_reported(tmp_path):
 
 def test_commit_replay_needs_repo_and_commit(tmp_path):
     toml = SYNTHETIC.replace('source = "synthetic"', 'source = "commit-replay"') + '[workspace]\nrepo = "/x"\n'
-    with pytest.raises(TaskError, match="needs \\[workspace\\] repo and commit"):
+    with pytest.raises(TaskError, match="needs \\[workspace\\] commit, and url or repo"):
         load_task(make_task(tmp_path, "replay", toml, fixture=False))
 
 

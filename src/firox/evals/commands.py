@@ -3,6 +3,8 @@
 - `run`: run tasks, write a summary per model profile, compare with the baseline
 - `report`: summarize a run (default: the latest) or show the history
 - `baseline`: store a run as the reference for its profile(s)
+- `propose`: list commits of a public repository that could become replay tasks
+- `add`: draft a replay task from a commit, verify it, and write it after approval
 
 `run` and `report` exit with status 1 when they find a regression.
 """
@@ -16,8 +18,11 @@ import typer
 from rich.console import Console
 from rich.markup import escape
 
+import shutil
+import tempfile
 from dataclasses import asdict
 
+from rich.syntax import Syntax
 from rich.table import Table
 
 from ..config import ConfigError, load_config
@@ -40,7 +45,9 @@ from .report import (
     summarize,
 )
 from .runner import RunResult
-from .task import TASKS_DIR, TaskError, load_tasks
+from ..usecases import commits
+from .task import TASKS_DIR, TaskError, load_task, load_tasks
+from .verify import verify
 
 eval_app = typer.Typer(
     name="eval",
@@ -242,3 +249,91 @@ def _history(console: Console, results_dir: Path, profile: str | None) -> None:
             table.add_row(s["run_id"].split("_")[0], (s["firox_commit"] or "?")[:7], (s["model_digests"] or ["?"])[0][:12],
                           f"{t['score']:.0%}", f"{t['passed']}/{t['runs']}", f"{t['median_seconds']:.0f}s")
         console.print(table)
+
+
+# ----- mining commit-replay tasks ------------------------------------------------------
+
+@eval_app.command("propose")
+def propose(
+    repo: Annotated[Path, typer.Option("--repo", "-r", help="A local clone of one of your public repositories.")],
+    category: Annotated[str | None, typer.Option("--category", help="Only commits that look like this category.")] = None,
+    limit: Annotated[int, typer.Option(help="Show at most this many candidates.")] = 20,
+    scan: Annotated[int, typer.Option(help="How many recent commits to look at.")] = 400,
+    max_files: Annotated[int, typer.Option(help="Most files a candidate may change.")] = 3,
+    max_lines: Annotated[int, typer.Option(help="Most changed lines a candidate may have.")] = 150,
+) -> None:
+    """List small commits that change code and tests, as candidate replay tasks (writes nothing)."""
+    console = Console(highlight=False)
+    try:
+        info = commits.repo_info(repo)
+        found = commits.candidates(info.path, scan=scan, max_files=max_files, max_lines=max_lines, category=category)
+    except commits.MinerError as e:
+        console.print(f"[red]{escape(str(e))}[/]")
+        raise typer.Exit(1) from None
+    console.print(f"{info.url} · {info.visibility} · {info.license} · {len(found)} candidates in the last {scan} commits")
+    table = Table(box=None, pad_edge=False, show_edge=False)
+    for column in ("commit", "category", "files", "lines", "tests", "subject"):
+        table.add_column(column, justify="right" if column in ("files", "lines", "tests") else "left")
+    for c in found[:limit]:
+        table.add_row(c.sha[:7], c.category, str(len(c.files)), str(c.lines), str(len(c.tests)), escape(c.subject[:70]))
+    console.print(table)
+    if found:
+        console.print(f"[dim]add one: firox eval add --repo {repo} --commit <commit>[/]")
+
+
+@eval_app.command("add")
+def add(
+    repo: Annotated[Path, typer.Option("--repo", "-r", help="A local clone of one of your public repositories.")],
+    commit: Annotated[str, typer.Option("--commit", help="The commit to replay.")],
+    category: Annotated[str | None, typer.Option("--category", help="Override the guessed category.")] = None,
+    prompt: Annotated[str | None, typer.Option("--prompt", help="The instruction for the agent (default: drafted from the commit message).")] = None,
+    tasks_dir: Annotated[Path, typer.Option(help="Folder with the eval tasks.")] = TASKS_DIR,
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Write without asking (after a successful verification).")] = False,
+    verify_task: Annotated[bool, typer.Option("--verify/--no-verify", help="Check that it fails before and passes after the commit.")] = True,
+) -> None:
+    """Draft a replay task from a commit, verify it, show it, and write it only if you approve."""
+    console = Console(highlight=False)
+    try:
+        info = commits.repo_info(repo)
+        sha = commits._git(info.path, "rev-parse", "--verify", f"{commit}^{{commit}}").strip()
+        [candidate] = [c for c in commits.candidates(info.path, scan=100_000, max_files=10**6, max_lines=10**9)
+                       if c.sha == sha] or [None]
+        if candidate is None:
+            raise commits.MinerError(f"{commit} doesn't change both source code and tests, so it can't be replayed")
+        task_name = commits.task_id(info, candidate)
+        text = commits.draft_toml(info, candidate, category=category, prompt=prompt)
+    except commits.MinerError as e:
+        console.print(f"[red]{escape(str(e))}[/]")
+        raise typer.Exit(1) from None
+    destination = tasks_dir / task_name
+    if destination.exists():
+        console.print(f"[red]{destination} already exists[/]")
+        raise typer.Exit(1)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        draft_dir = Path(tmp) / task_name
+        draft_dir.mkdir()
+        (draft_dir / "task.toml").write_text(text, encoding="utf-8")
+        try:
+            task = load_task(draft_dir)
+        except TaskError as e:
+            console.print(f"[red]the draft is invalid: {escape(str(e))}[/]")
+            raise typer.Exit(1) from None
+        console.print(Syntax(text, "toml", theme="ansi_dark", background_color="default"))
+        if verify_task:
+            console.print("[dim]verifying: the checks must fail on the parent commit and pass on the real commit ...[/]")
+            result = verify(task)
+            console.print(("[green]✓[/]" if result.fails_as_given else "[red]✗[/]") + " fails on the parent commit")
+            console.print(("[green]✓[/]" if result.passes_with_solution else "[red]✗[/]") + " passes on the real commit")
+            for check in result.with_solution:
+                if not check.passed:
+                    console.print(f"  [red]{escape(check.reason.splitlines()[0])}[/]")
+            if not result.ok:
+                console.print("[red]Not written: the task doesn't separate failing from passing work.[/]")
+                raise typer.Exit(1)
+        if not yes and not typer.confirm(f"Write {destination}?", default=False):
+            console.print("Not written.")
+            raise typer.Exit(1)
+        destination.mkdir(parents=True)
+        shutil.copy2(draft_dir / "task.toml", destination / "task.toml")
+    console.print(f"written: {destination / 'task.toml'}")
