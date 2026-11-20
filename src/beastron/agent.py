@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 import platform
 import re
+import subprocess
 import time
 from collections.abc import Callable
 from datetime import date
+from pathlib import Path
 
 from .briefing import Briefing, budget_for, build_briefing
 from .client import Message, ModelClient, ModelError
@@ -61,6 +63,35 @@ EMPTY_REPLY_MESSAGE = (
     "[beastron] Your last reply was empty: your answer was only in your reasoning, which the user does not see. "
     "Write your final answer now as a normal reply."
 )
+
+
+def unfinished_git_operation(root: Path) -> str | None:
+    """Find in-progress Git operations, including in linked worktrees."""
+    try:
+        result = subprocess.run(
+            ['git', 'rev-parse', '--git-dir'], cwd=root, capture_output=True,
+            text=True, timeout=5, stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode or not result.stdout.strip():
+        return None
+    gitdir = Path(result.stdout.strip())
+    if not gitdir.is_absolute():
+        gitdir = root / gitdir
+    if (gitdir / 'rebase-merge').is_dir() or (gitdir / 'rebase-apply').is_dir():
+        return 'rebase'
+    if (gitdir / 'CHERRY_PICK_HEAD').is_file():
+        return 'cherry-pick'
+    if (gitdir / 'MERGE_HEAD').is_file():
+        return 'merge'
+    return None
+
+
+def unfinished_git_message(operation: str) -> str:
+    action = {'merge': 'git commit', 'cherry-pick': 'git cherry-pick --continue',
+              'rebase': 'git rebase --continue'}[operation]
+    return f"A {operation} is still in progress. If the conflicts are resolved, finish it with {action}. If you can't, say so."
 
 
 def announces_unfinished_action(text: str) -> bool:
@@ -166,6 +197,7 @@ class Agent:
         prompt_tokens = completion_tokens = 0
         step = 0
         nudges = 0
+        git_reminded = False
         self.emit(TurnStart(task, mode))
         self.messages.append({"role": "user", "content": task + ("\n\n" + QUESTION_HINT if mode == QUESTION else "")})
         schemas = [t.schema() for t in self.tools.values() if self._allowed is None or t.name in self._allowed]
@@ -210,6 +242,12 @@ class Agent:
                         nudges += 1
                         self.emit(Nudge("the model announced a step without taking it"))
                         self.messages.append({"role": "user", "content": NUDGE_MESSAGE})
+                        continue
+                    operation = unfinished_git_operation(self.workspace.root) if not git_reminded else None
+                    if operation:
+                        git_reminded = True
+                        self.emit(Nudge(f"a {operation} is still in progress"))
+                        self.messages.append({"role": "user", "content": unfinished_git_message(operation)})
                         continue
                     return finish("done")
                 # A denial ends the turn: the user said no, so control goes back
