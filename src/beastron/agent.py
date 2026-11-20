@@ -95,7 +95,8 @@ def unfinished_git_operation(root: Path) -> str | None:
 def unfinished_git_message(operation: str) -> str:
     action = {'merge': 'git commit', 'cherry-pick': 'git cherry-pick --continue',
               'rebase': 'git rebase --continue'}[operation]
-    return f"A {operation} is still in progress. If the conflicts are resolved, finish it with {action}. If you can't, say so."
+    return (f"A {operation} is still in progress. If the conflicts are resolved, use run_shell to stage "
+            f"the resolved files with git add, then finish with {action}. If you can't, say so.")
 
 
 def announces_unfinished_action(text: str) -> bool:

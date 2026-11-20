@@ -38,6 +38,9 @@ def test_unfinished_operation_gets_one_neutral_reminder(repo, marker, operation)
     assert len(client.seen)==2
     reminder=client.seen[1][-1]['content']
     assert operation in reminder.lower() and "If you can't, say so" in reminder
+    assert 'run_shell' in reminder and 'git add' in reminder
+    assert {'merge': 'git commit', 'cherry-pick': 'git cherry-pick --continue',
+            'rebase': 'git rebase --continue'}[operation] in reminder
     assert len([e for e in events if isinstance(e,Nudge)])==1
 
 
