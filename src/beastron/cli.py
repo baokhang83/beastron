@@ -13,6 +13,7 @@ from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.history import FileHistory
 
 from .agent import Agent
+from .policy import WORK
 from .client import OpenAICompatClient
 from .config import Config, ConfigError, load_config
 from .evals.commands import eval_app
@@ -25,6 +26,7 @@ COMMANDS = {
     "/help": "show this help",
     "/models": "list the model profiles in models.toml",
     "/model": "switch model: /model NAME",
+    "/do": "run a request with all tools, even if it reads like a question: /do REQUEST",
     "/clear": "start a fresh conversation",
     "/context": "show how full the context is",
     "/verbose": "toggle showing reasoning and full tool output",
@@ -168,6 +170,12 @@ def _command(line: str, agent: Agent, ui: RichUI, cfg: Config, trace: SessionTra
                          digest=model_digest(agent.client.profile))
         ui.info("switched model; the conversation so far is kept (/clear to start fresh)")
         ui.header(agent.client.profile, agent.workspace.root)
+    elif cmd == "/do":
+        if not arg:
+            ui.info("use /do REQUEST: it runs the request with every tool, even when it reads like a question")
+            return None
+        ui.console.print()
+        agent.run(arg, intent=WORK)
     elif cmd == "/clear":
         agent.reset()
         if trace:
