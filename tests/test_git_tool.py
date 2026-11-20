@@ -121,3 +121,62 @@ def test_is_tracked(repo, tmp_path_factory):
     plain = tmp_path_factory.mktemp("plain")
     (plain / "f.txt").write_text("x")
     assert is_tracked(Workspace(plain), plain / "f.txt") is None
+
+
+# ----- git commands typed into the `command` field ---------------------------------
+
+def test_a_typed_diff_with_a_ref_is_understood(repo, tool):
+    git(repo, "add", "-A"); git(repo, "commit", "-q", "-m", "Second")
+    out = run(tool, command="diff HEAD~1")
+    assert "x_client.py" in out.output and "a + b + 0" in out.output
+
+
+def test_a_leading_git_and_flags_are_accepted(repo, tool):
+    git(repo, "add", "-A"); git(repo, "commit", "-q", "-m", "Second")
+    out = run(tool, command="git log --oneline -1")
+    assert "Second" in out.output and "Add the add function" not in out.output
+
+
+def test_typed_log_limit_forms(repo, tool):
+    git(repo, "add", "-A"); git(repo, "commit", "-q", "-m", "Second")
+    for form in ("log -1", "log -n1", "log -n 1"):
+        assert out_commits(run(tool, command=form)) == 1, form
+    assert out_commits(run(tool, command="log -2")) == 2
+
+
+def out_commits(result):
+    return int(result.summary.split()[0])
+
+
+def test_a_typed_range_and_a_typed_path(repo, tool):
+    git(repo, "add", "-A"); git(repo, "commit", "-q", "-m", "Second")
+    out = run(tool, command="diff HEAD~1 -- app.py")
+    assert "app.py" in out.output and "x_client.py" not in out.output
+    assert "a + b + 0" in run(tool, command="show HEAD app.py").output
+
+
+def test_two_typed_refs_for_diff_mean_a_range(repo, tool):
+    git(repo, "add", "-A"); git(repo, "commit", "-q", "-m", "Second")
+    out = run(tool, command="diff HEAD~1 HEAD")
+    assert "x_client.py" in out.output
+
+
+def test_a_typed_ref_beside_a_path_argument(repo, tool):
+    git(repo, "add", "-A"); git(repo, "commit", "-q", "-m", "Second")
+    out = run(tool, command="diff HEAD~1", path="app.py")
+    assert "a + b + 0" in out.output and "x_client.py" not in out.output
+
+
+@pytest.mark.parametrize("typed", [
+    "diff --output=/tmp/pwned", "log --exec=touch", "diff -c core.pager=sh", "status; touch /tmp/x",
+    "show HEAD && rm -rf /", "checkout main", "git commit -m x", "push origin main", "diff $(id)", "log | cat",
+])
+def test_typed_commands_cannot_do_more_than_the_tool_does(repo, tool, typed):
+    with pytest.raises(ToolError):
+        run(tool, command=typed)
+    assert not os.path.exists("/tmp/pwned")
+
+
+def test_an_unknown_typed_subcommand_names_the_allowed_ones(tool):
+    with pytest.raises(ToolError, match="status, diff, log or show"):
+        run(tool, command="checkout main")
