@@ -7,7 +7,7 @@ tags = ["full"]
 
 [[checks]]
 type = "answer_mentions"
-patterns = ["TAX_RATES|tax rates?", "\\bCH\\b|switzerland|swiss", "missing|no (entry|rate)|not (in|defined|listed|present)|doesn'?t (have|contain|include)"]
+patterns = ["TAX_RATES|tax rates?", "\\bCH\\b|switzerland|swiss", "missing|lacks?|absent|no (entry|rate)|not (in|defined|listed|present|contain(s|ing)?|include[ds]?|supported)|(doesn'?t|does not|didn'?t|isn'?t|is not|aren'?t|are not) (have|contain|include|in|defined|listed|present|supported)"]
 
 [[checks]]
 type = "no_changes"
