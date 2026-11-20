@@ -1,0 +1,546 @@
+{
+  "schema": 1,
+  "created_at": "2026-11-19T18:54:55.308891+00:00",
+  "run_id": "20261119T093227Z_c23c41",
+  "profile": "qwen3-8b-local",
+  "model": "qwen3:8b",
+  "model_digests": [
+    "500a1f067a9f782620b40bee6f7b0c89e17ae61f686b92c24933e4ca4b2b8b41"
+  ],
+  "claude_code_versions": [],
+  "beastron_commit": "67fbc2303c394502cfe950eed6c555435bb9016d",
+  "sandboxed": true,
+  "tasks": {
+    "announce-and-stop-trap": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 300.2
+    },
+    "blastradius-0e6beb4-skip-java-lang-invoke-classes-in-the-tra": {
+      "category": "fix",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 1204.6
+    },
+    "blastradius-56b22f5-normalize-surefire-timing-identities": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 1203.9
+    },
+    "blastradius-578b7db-fix-mutation-cache-ignoring-skipped-test": {
+      "category": "fix",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 1204.3
+    },
+    "blastradius-5903dfd-classify-fluencyloop-paths-as-inert-not": {
+      "category": "fix",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 304.3
+    },
+    "blastradius-cache-warmer-254b41e-use-a-valid-github-cache-format-version": {
+      "category": "fix",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 511.2
+    },
+    "blastradius-ea6cd1f-support-java-17-tracking-targets": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 507.4
+    },
+    "blastradius-f4f4829-skip-clean-on-confirmfailure-single-test": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 494.6
+    },
+    "build-java-release-level": {
+      "category": "build",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 601.5
+    },
+    "build-missing-test-dependency": {
+      "category": "build",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 256.7
+    },
+    "build-tests-skipped": {
+      "category": "build",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 66.2
+    },
+    "config-docker-compose": {
+      "category": "config",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 138.6
+    },
+    "docs-changelog-from-git": {
+      "category": "docs",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 300.2
+    },
+    "docs-env-vars-section": {
+      "category": "docs",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 300.1
+    },
+    "docs-readme-matches-cli": {
+      "category": "docs",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 116.8
+    },
+    "docs-readme-maven-coordinates": {
+      "category": "docs",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 300.1
+    },
+    "edit-exact-indentation": {
+      "category": "config",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 52.1
+    },
+    "explain-arch-metrics-analysis": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 53.9
+    },
+    "explain-blastradius-maven-setup": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 109.3
+    },
+    "explain-blastradius-test-selection": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 77.8
+    },
+    "explain-blastradius-would-miss": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 93.7
+    },
+    "explain-cache-warmer": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 75.7
+    },
+    "explain-java-config-precedence": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 66.0
+    },
+    "explain-project-purpose": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 22.6
+    },
+    "explain-stack-trace": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 83.7
+    },
+    "explain-warden-boost": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 91.6
+    },
+    "explain-warden-shrink-order": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 116.3
+    },
+    "explain-warmup-speedup": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 86.0
+    },
+    "explain-where-configured": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 43.0
+    },
+    "fix-java-compile-error": {
+      "category": "fix",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 193.1
+    },
+    "fix-junit-failing-test": {
+      "category": "fix",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 123.8
+    },
+    "fix-python-off-by-one": {
+      "category": "fix",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 211.6
+    },
+    "git-annotated-tag": {
+      "category": "git",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 63.4
+    },
+    "git-branch-and-commit": {
+      "category": "git",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 91.4
+    },
+    "git-cherry-pick-fix": {
+      "category": "git",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 241.9
+    },
+    "git-find-breaking-commit": {
+      "category": "git",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 139.6
+    },
+    "git-history-question": {
+      "category": "git",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 38.5
+    },
+    "git-resolve-merge-conflict": {
+      "category": "git",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 103.7
+    },
+    "git-revert-commit": {
+      "category": "git",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 75.2
+    },
+    "mnemo-jvm-warden-36c002b-fence-publication-on-unchanged-boost-sta": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 917.1
+    },
+    "mnemo-jvm-warden-3a1054d-fail-closed-when-veto-lacks-observed-all": {
+      "category": "fix",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 1203.4
+    },
+    "mnemo-jvm-warden-5ad1096-add-boost-memory-target-resolution": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 1,
+      "median_seconds": 800.4
+    },
+    "mnemo-jvm-warden-5dd8534-accept-g1-as-a-boost-eligible-collector": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 1203.3
+    },
+    "mnemo-jvm-warden-b2885f6-protect-correlated-resize-intents-from-s": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 429.6
+    },
+    "mnemo-jvm-warden-b8eabd8-fence-correlated-intent-writes-against-c": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 1203.8
+    },
+    "mnemo-jvm-warden-c364d12-read-and-validate-admitted-boost-floor-s": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 1203.4
+    },
+    "mnemo-warmup-24cf80e-refresh-a-login-that-expires-mid-run-onc": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 681.0
+    },
+    "mnemo-warmup-2e93727-add-run-print-format-nul-for-the-native": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 330.0
+    },
+    "mnemo-warmup-d799095-report-malformed-jdk-probe-output-as-a-p": {
+      "category": "fix",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 289.3
+    },
+    "mnemo-warmup-dcc3c7c-select-ecr-workload-identity-login-from": {
+      "category": "feature",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 439.1
+    },
+    "question-must-not-edit": {
+      "category": "explain",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 300.1
+    },
+    "refactor-extract-method-java": {
+      "category": "refactor",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 240.3
+    },
+    "refactor-rename-method-java": {
+      "category": "refactor",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 601.6
+    },
+    "remove-dead-class": {
+      "category": "remove",
+      "runs": 1,
+      "passed": 1,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 91.5
+    },
+    "remove-deprecated-option-java": {
+      "category": "remove",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 601.2
+    },
+    "tests-junit-parse-duration": {
+      "category": "tests",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 1,
+      "errors": 0,
+      "median_seconds": 904.2
+    },
+    "tests-junit-slugify": {
+      "category": "tests",
+      "runs": 1,
+      "passed": 0,
+      "timeouts": 0,
+      "errors": 0,
+      "median_seconds": 491.7
+    }
+  },
+  "categories": {
+    "build": {
+      "tasks": 3,
+      "runs": 3,
+      "passed": 2,
+      "rate": 0.6667
+    },
+    "config": {
+      "tasks": 2,
+      "runs": 2,
+      "passed": 2,
+      "rate": 1.0
+    },
+    "docs": {
+      "tasks": 4,
+      "runs": 4,
+      "passed": 0,
+      "rate": 0.0
+    },
+    "explain": {
+      "tasks": 13,
+      "runs": 13,
+      "passed": 10,
+      "rate": 0.7692
+    },
+    "feature": {
+      "tasks": 13,
+      "runs": 13,
+      "passed": 0,
+      "rate": 0.0
+    },
+    "fix": {
+      "tasks": 9,
+      "runs": 9,
+      "passed": 3,
+      "rate": 0.3333
+    },
+    "git": {
+      "tasks": 7,
+      "runs": 7,
+      "passed": 3,
+      "rate": 0.4286
+    },
+    "refactor": {
+      "tasks": 2,
+      "runs": 2,
+      "passed": 1,
+      "rate": 0.5
+    },
+    "remove": {
+      "tasks": 2,
+      "runs": 2,
+      "passed": 1,
+      "rate": 0.5
+    },
+    "tests": {
+      "tasks": 2,
+      "runs": 2,
+      "passed": 0,
+      "rate": 0.0
+    }
+  },
+  "totals": {
+    "runs": 57,
+    "passed": 22,
+    "rate": 0.386,
+    "score": 0.4023,
+    "score_weighting": "usage",
+    "median_seconds": 256.7,
+    "p90_seconds": 1203.4,
+    "timeouts": 16,
+    "errors": 1,
+    "nudges": 2,
+    "tool_errors": 189
+  }
+}
