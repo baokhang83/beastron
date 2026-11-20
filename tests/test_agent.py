@@ -144,6 +144,34 @@ def test_final_summary_is_not_nudged(tmp_path):
     assert len(client.seen) == 1
 
 
+def test_an_empty_reply_with_the_answer_in_the_reasoning_gets_a_nudge(tmp_path):
+    agent, client, events = make_agent(
+        tmp_path,
+        [
+            ModelReply(content="", reasoning="The answer: add a --verbose flag to the parser."),
+            ModelReply(content="Add a --verbose flag to the parser."),
+        ],
+    )
+    assert agent.run("what would it take?") == "done"
+    assert len(client.seen) == 2
+    nudge = agent.messages[-2]
+    assert nudge["role"] == "user" and "Your last reply was empty" in nudge["content"]
+    assert agent.messages[-1]["content"] == "Add a --verbose flag to the parser."
+
+
+def test_an_empty_reply_without_reasoning_is_not_nudged(tmp_path):
+    agent, client, _ = make_agent(tmp_path, [ModelReply(content="")])
+    assert agent.run("go") == "done"
+    assert len(client.seen) == 1
+
+
+def test_empty_reply_nudges_share_the_limit(tmp_path):
+    replies = [ModelReply(content="", reasoning="thinking only") for _ in range(5)]
+    agent, client, _ = make_agent(tmp_path, replies)
+    assert agent.run("go") == "done"
+    assert len(client.seen) == 3  # the first reply plus two nudges
+
+
 def calls(*specs):
     """One model reply with several tool calls: specs are (name, arguments) pairs."""
     return ModelReply(tool_calls=[ToolCall(f"c{i}", name, args) for i, (name, args) in enumerate(specs)])

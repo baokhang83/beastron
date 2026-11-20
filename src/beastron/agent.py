@@ -52,6 +52,14 @@ NUDGE_MESSAGE = (
     "If there is more to do, call the tool now. If the task is complete, reply with your final summary."
 )
 
+# With thinking on, some models (qwen3.5:9b was seen doing it) end a turn with the whole
+# answer in the reasoning channel and nothing in the reply: the user, and any check on the
+# final answer, see an empty reply. The agent asks the model to write the answer as a reply.
+EMPTY_REPLY_MESSAGE = (
+    "[beastron] Your last reply was empty: your answer was only in your reasoning, which the user does not see. "
+    "Write your final answer now as a normal reply."
+)
+
 
 def announces_unfinished_action(text: str) -> bool:
     tail = text.strip()[-300:]
@@ -190,6 +198,11 @@ class Agent:
                 self._update_context(reply.prompt_tokens, reply.completion_tokens)
 
                 if not reply.tool_calls:
+                    if nudges < MAX_NUDGES and not reply.content.strip() and reply.reasoning.strip():
+                        nudges += 1
+                        self.emit(Nudge("the reply was empty: the answer was only in the reasoning"))
+                        self.messages.append({"role": "user", "content": EMPTY_REPLY_MESSAGE})
+                        continue
                     if nudges < MAX_NUDGES and announces_unfinished_action(reply.content):
                         nudges += 1
                         self.emit(Nudge("the model announced a step without taking it"))

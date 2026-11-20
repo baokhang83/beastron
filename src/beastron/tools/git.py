@@ -81,6 +81,74 @@ def _clip(text: str) -> str:
     return text[:MAX_OUTPUT] + f"\n[... output cut at {MAX_OUTPUT} characters; narrow it with path or ref]"
 
 
+# Flags a model may type after the subcommand. Harmless, and already what the tool does;
+# anything else is refused, since this tool runs without approval (see the module docstring).
+_TYPED_FLAGS_IGNORED = {"--oneline", "--stat", "--patch", "-p", "--no-color", "--no-pager", "--no-ext-diff", "--no-textconv"}
+_SUBCOMMANDS = ("status", "diff", "log", "show")
+
+
+def parse_typed_command(ws: Workspace, text: str, args: Args) -> Args:
+    """Turn `diff HEAD~1 -- totals.py` or `git log -5` typed into `command` into the tool's own arguments.
+
+    Small models write a git command line in the `command` field instead of filling `ref`, `path`
+    and `limit`. Only the same four read-only subcommands are understood, and the result goes
+    through the same checks as arguments given properly.
+    """
+    tokens = text.split()
+    if tokens and tokens[0] == "git":
+        tokens = tokens[1:]
+    if not tokens or tokens[0] not in _SUBCOMMANDS:
+        raise ToolError(f"Unknown git command {text!r}. Use status, diff, log or show.")
+    command, rest = tokens[0], tokens[1:]
+    refs: list[str] = []
+    path = args.get("path")
+    limit = args.get("limit")
+    i = 0
+    while i < len(rest):
+        token = rest[i]
+        if token == "--":
+            if i + 1 < len(rest):
+                path = rest[i + 1]
+            break
+        if token in _TYPED_FLAGS_IGNORED:
+            pass
+        elif command == "log" and re.fullmatch(r"-n?\d+", token):
+            limit = int(token.lstrip("-n"))
+        elif command == "log" and token == "-n" and i + 1 < len(rest) and rest[i + 1].isdigit():
+            limit = int(rest[i + 1])
+            i += 1
+        elif token.startswith("-"):
+            raise ToolError(
+                f"The option {token!r} is not supported. git takes: command (status, diff, log, show), "
+                "ref, path, limit. Example: command=diff, ref=HEAD~1, path=totals.py."
+            )
+        elif _is_existing_path(ws, token):
+            path = token
+        else:
+            refs.append(token)
+        i += 1
+    ref = args.get("ref")
+    if refs:
+        if len(refs) == 1:
+            ref = refs[0]
+        elif command == "diff" and len(refs) == 2:
+            ref = f"{refs[0]}..{refs[1]}"  # `git diff A B` and `git diff A..B` mean the same
+        else:
+            raise ToolError(f"git {command} takes one ref; got {', '.join(refs)}.")
+    out = {**args, "command": command}
+    for key, value in (("ref", ref), ("path", path), ("limit", limit)):
+        if value is not None:
+            out[key] = value
+    return out
+
+
+def _is_existing_path(ws: Workspace, token: str) -> bool:
+    try:
+        return ws.resolve(token).exists()
+    except Exception:  # outside the project, or not a path
+        return False
+
+
 def make_git_tool(ws: Workspace) -> Tool:
     def check_ref(value: str | None) -> str | None:
         if not value:
@@ -102,6 +170,8 @@ def make_git_tool(ws: Workspace) -> Tool:
         return result
 
     def _git(args: Args) -> ToolResult:
+        if " " in args["command"].strip():
+            args = parse_typed_command(ws, args["command"].strip(), args)
         command = args["command"]
         ref = check_ref(args.get("ref"))
         paths = ["--", ws.rel(ws.resolve(args["path"]))] if args.get("path") else []
