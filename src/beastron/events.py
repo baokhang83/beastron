@@ -17,6 +17,7 @@ class TurnStart:
     """A new user message; the agent starts working on it."""
 
     task: str
+    mode: str = "work"  # "question": read-only tools (beastron.policy)
 
 
 @dataclass(frozen=True)

@@ -15,12 +15,12 @@ import beastron.evals.runner as runner
 from beastron.cli import app
 from beastron.evals.report import compare, summarize
 from beastron.evals.task import load_tasks
-from scripted import ANSWER_WITHOUT_EDITING, EDIT_INSTEAD_OF_ANSWERING, FIX_OFF_BY_ONE, PROFILE, factory
+from scripted import EDIT_THE_WRONG_LINE, FIX_OFF_BY_ONE, PROFILE, SET_THE_RETRY_DELAY, factory
 
 TASKS = Path(__file__).resolve().parents[1] / "evals" / "tasks"
-IDS = ["fix-python-off-by-one", "question-must-not-edit"]
-GOOD = {"tests in test_utils.py fail": FIX_OFF_BY_ONE, "What would it take": ANSWER_WITHOUT_EDITING}
-WORSE = {"tests in test_utils.py fail": FIX_OFF_BY_ONE, "What would it take": EDIT_INSTEAD_OF_ANSWERING}
+IDS = ["fix-python-off-by-one", "edit-exact-indentation"]
+GOOD = {"tests in test_utils.py fail": FIX_OFF_BY_ONE, "retried after 5 seconds": SET_THE_RETRY_DELAY}
+WORSE = {"tests in test_utils.py fail": FIX_OFF_BY_ONE, "retried after 5 seconds": EDIT_THE_WRONG_LINE}
 
 
 @pytest.fixture(autouse=True)
@@ -40,15 +40,14 @@ def test_a_scripted_pass_and_a_scripted_fail_produce_the_expected_summary():
     [summary] = summarize([r.__dict__ for r in results], run_id=run_dir.name)
     tasks = summary["tasks"]
     assert (tasks["fix-python-off-by-one"]["passed"], tasks["fix-python-off-by-one"]["runs"]) == (3, 3)
-    assert (tasks["question-must-not-edit"]["passed"], tasks["question-must-not-edit"]["runs"]) == (0, 3)
+    assert (tasks["edit-exact-indentation"]["passed"], tasks["edit-exact-indentation"]["runs"]) == (0, 3)
     assert summary["categories"]["fix"]["rate"] == 1.0
-    assert summary["categories"]["explain"]["rate"] == 0.0
+    assert summary["categories"]["config"]["rate"] == 0.0
     assert summary["totals"]["score"] == 0.5 and summary["totals"]["errors"] == 0
 
-    question = next(r for r in results if r.task == "question-must-not-edit")
-    assert question.checks[0] == {"type": "no_changes", "passed": False,
-                                  "reason": "files changed although none may: todo.py"}
-    assert question.changes == [{"path": "todo.py", "kind": "modified", "added": 1, "removed": 0}]  # one line inserted
+    wrong = next(r for r in results if r.task == "edit-exact-indentation")
+    assert not wrong.passed and not wrong.checks[0]["passed"]  # the retry delay was never set to 5
+    assert wrong.changes == [{"path": "handlers.py", "kind": "modified", "added": 1, "removed": 1}]
 
 
 def test_a_pass_turning_into_a_fail_is_a_regression():
@@ -58,7 +57,7 @@ def test_a_pass_turning_into_a_fail_is_a_regression():
     [current] = summarize([r.__dict__ for r in worse])
     assert baseline["totals"]["passed"] == 6
     comparison = compare(current, baseline)
-    assert comparison.task_regressions == ["question-must-not-edit"] and comparison.has_regressions
+    assert comparison.task_regressions == ["edit-exact-indentation"] and comparison.has_regressions
 
 
 def test_the_eval_commands_end_to_end(tmp_path, monkeypatch):
@@ -89,7 +88,7 @@ def test_the_eval_commands_end_to_end(tmp_path, monkeypatch):
     second = run_with(WORSE)
     assert second.exit_code == 1  # a regression fails the command
     assert "3/6 runs passed" in second.output
-    assert "REGRESSIONS FOUND" in second.output and "question-must-not-edit" in second.output
+    assert "REGRESSIONS FOUND" in second.output and "edit-exact-indentation" in second.output
 
     report = cli.invoke(app, ["eval", "report", "--baselines-dir", str(baselines_dir)])  # the latest run again
     assert report.exit_code == 1 and "regressed" in report.output

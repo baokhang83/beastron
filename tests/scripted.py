@@ -32,12 +32,25 @@ ANSWER_WITHOUT_EDITING = [
     tool("read_file", path="todo.py"),
     say("Add parser.add_argument('--verbose', action='store_true') to the argparse parser in main(), then use args.verbose."),
 ]
-# ... and the known small-model failure: editing when asked a question.
+# ... and the known small-model failure: editing when asked a question (beastron.policy now blocks it).
 EDIT_INSTEAD_OF_ANSWERING = [
     tool("read_file", path="todo.py"),
     tool("edit_file", path="todo.py", old_text='parser = argparse.ArgumentParser(prog="todo")',
          new_text='parser = argparse.ArgumentParser(prog="todo")\n    parser.add_argument("--verbose", action="store_true")'),
     say("I added a --verbose option to the argparse parser."),
+]
+
+
+# ... and a change task: the right edit, and a wrong one (the small-model slip of editing a neighbouring line).
+SET_THE_RETRY_DELAY = [
+    tool("read_file", path="handlers.py"),
+    tool("edit_file", path="handlers.py", old_text="retry_delay = 2", new_text="retry_delay = 5"),
+    say("Changed the retry delay to 5 seconds."),
+]
+EDIT_THE_WRONG_LINE = [
+    tool("read_file", path="handlers.py"),
+    tool("edit_file", path="handlers.py", old_text="if attempt < 2:", new_text="if attempt < 5:"),
+    say("Changed the retry delay to 5 seconds."),
 ]
 
 
