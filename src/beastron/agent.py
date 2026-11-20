@@ -11,9 +11,11 @@ from datetime import date
 
 from .briefing import Briefing, budget_for, build_briefing
 from .client import Message, ModelClient, ModelError
+from .discard_guard import DiscardGuard
 from .events import (
     ApprovalRequest,
     ContextUpdate,
+    DiscardAttempt,
     ErrorEvent,
     Event,
     FileChange,
@@ -169,6 +171,7 @@ class Agent:
         schemas = [t.schema() for t in self.tools.values() if self._allowed is None or t.name in self._allowed]
         self._changes: dict[str, FileChange] = {}
         self._shell_commands = 0
+        self._discard_guard = DiscardGuard(self.workspace.root)
 
         def finish(reason: TurnEndReason) -> TurnEndReason:
             self.emit(
@@ -251,6 +254,18 @@ class Agent:
             )
         elif parse_error:
             result = ToolResult(parse_error, "invalid arguments", ok=False)
+        elif call.name == "run_shell" and isinstance(args.get("command"), str):
+            decisions = self._discard_guard.check(args["command"])
+            for attempt, blocked, reason in decisions:
+                self.emit(DiscardAttempt(call.id, attempt.action, blocked, reason))
+            if any(blocked for _, blocked, _ in decisions):
+                result = ToolResult(
+                    "Blocked: this Git command could discard changes made during this task. "
+                    "Use the read-only git tool to inspect the repository.",
+                    "blocked Git discard", ok=False,
+                )
+            else:
+                result = self._run_tool(tool, args)
         else:
             result = self._run_tool(tool, args)
 

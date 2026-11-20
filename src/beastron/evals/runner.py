@@ -29,7 +29,7 @@ from typing import Any
 from ..agent import Agent
 from ..client import ModelClient, OpenAICompatClient
 from ..config import ModelProfile
-from ..events import ErrorEvent, Event, Nudge, ToolEnd, TurnEnd
+from ..events import DiscardAttempt, ErrorEvent, Event, Nudge, ToolEnd, TurnEnd
 from ..tools import Workspace, make_tools
 from ..trace import SessionTrace, fan_out, beastron_version, model_digest, state_dir
 from . import sandbox
@@ -58,6 +58,8 @@ class RunResult:
     nudges: int = 0
     tool_calls: int = 0
     tool_errors: int = 0
+    git_discard_blocked: int = 0
+    git_discard_allowed: int = 0
     changes: list[dict[str, Any]] = field(default_factory=list)
     shell_commands: int = 0
     error: str | None = None
@@ -77,11 +79,17 @@ class _Collector:
 
     def __init__(self) -> None:
         self.nudges = self.tool_calls = self.tool_errors = 0
+        self.git_discard_blocked = self.git_discard_allowed = 0
         self.turn_end: TurnEnd | None = None
         self.errors: list[str] = []
 
     def __call__(self, event: Event) -> None:
         match event:
+            case DiscardAttempt(blocked=blocked):
+                if blocked:
+                    self.git_discard_blocked += 1
+                else:
+                    self.git_discard_allowed += 1
             case Nudge():
                 self.nudges += 1
             case ToolEnd(ok=ok):
@@ -175,6 +183,8 @@ def run_task(
                 result.changes = [asdict(c) for c in end.changes]
                 result.shell_commands = end.shell_commands
             result.nudges, result.tool_calls, result.tool_errors = collector.nudges, collector.tool_calls, collector.tool_errors
+            result.git_discard_blocked = collector.git_discard_blocked
+            result.git_discard_allowed = collector.git_discard_allowed
             result.error = "; ".join(collector.errors) or None
 
             outcomes = evaluate(task.checks, Context(ws.root, _final_answer(agent), before))

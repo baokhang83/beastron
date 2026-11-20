@@ -57,6 +57,14 @@ class ToolEnd:
 
 
 @dataclass(frozen=True)
+class DiscardAttempt:
+    call_id: str
+    action: str
+    blocked: bool
+    reason: str
+
+
+@dataclass(frozen=True)
 class Nudge:
     """The model announced an action without doing it; the agent asked it to continue."""
 
@@ -110,6 +118,7 @@ Event = (
     | ModelEnd
     | ToolStart
     | ToolEnd
+    | DiscardAttempt
     | Nudge
     | ContextUpdate
     | ErrorEvent
