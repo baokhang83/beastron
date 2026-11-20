@@ -1,7 +1,7 @@
 [project]
 name = "beastron"
 version = "0.1.0"
-description = "A coding agent for local and open-weight models"
+description = "Beastron — Local Open-Weight Coding Agent"
 readme = "README.md"
 authors = [
     { name = "baokhang83", email = "254220288+baokhang83@users.noreply.github.com" }
