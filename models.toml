@@ -3,14 +3,23 @@
 # beastron looks for this file in the current folder, then ~/.config/beastron/models.toml
 # (or wherever BEASTRON_CONFIG points).
 
-default = "qwen3-8b-local"
+default = "qwen35-9b"
+
+# Measured on the 57-task eval suite (see docs/model-comparison.md): qwen3.5:9b passed 39 of 57
+# runs (usage-weighted score 67% of the Claude Code reference), qwen3:8b with thinking 22 of 57 (40%).
+# On the 32K context it takes 15-17 GB of the 24 GB, all on the GPU.
+[models.qwen35-9b]
+base_url = "http://localhost:11434/v1"
+model = "qwen3.5:9b"
+context = 32768  # keep in sync with OLLAMA_CONTEXT_LENGTH on the server
 
 [models.qwen3-8b-local]
 base_url = "http://localhost:11434/v1"
 model = "qwen3:8b"
 context = 32768  # keep in sync with OLLAMA_CONTEXT_LENGTH on the server
 
-# Same model with thinking turned off: much faster, weaker on harder tasks.
+# Same model with thinking turned off. NOT measured: its first 10 eval runs (1 passed) were
+# dropped as unreliable, so there is no score for it.
 [models.qwen3-8b-fast]
 base_url = "http://localhost:11434/v1"
 model = "qwen3:8b"
