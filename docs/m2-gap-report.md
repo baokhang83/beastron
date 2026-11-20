@@ -53,3 +53,24 @@ By weighted gap, feature and fix on long Java tasks come first, then git and exp
 - 6 traces read of 18 failures.
 - Only two small models were run (see the comparison document). A larger model might remove some of these gaps and bring others.
 - The suite is 70% Java, like the owner's work, and 21 of its 57 tasks are commit replays of a few repositories, so it measures those repositories more than Java in general.
+
+## Update, 2026-11-20: after the first three fixes
+
+Three changes were merged after this report: the empty-reply nudge (#64), git commands typed into the git tool (#65) and read-only tools for questions (#66). The full suite was run again, one repeat, same model (`qwen3.5:9b`), same reference machine. The code measured is identical to `main` apart from README and `pyproject.toml` edits. The summary is `evals/results/20261120T085614Z_qwen35-9b_6bc938b.json`; it is also the baseline in `evals/baselines/qwen35-9b.json`.
+
+| category | weight | first run | after the fixes |
+|---|---|---|---|
+| git | 16.2% | 4 / 7 | **7 / 7** |
+| fix | 10.1% | 6 / 9 | 7 / 9 |
+| docs | 9.5% | 4 / 4 | 3 / 4 |
+| explain | 28.9% | 10 / 13 | 10 / 13 |
+| feature | 23.8% | 4 / 13 | 4 / 13 |
+| **usage-weighted score** | | **66.5%** (39 / 57) | **72.2%** (42 / 57) |
+
+0 timeouts, 0 errors, 22 nudges, 60 tool errors (76 before). The target is 80%, so the score is still 8 points short. One repeat per task: the git gain agrees with the targeted tests (3 / 10 to 9 / 10 on the two git question tasks), the one-task changes elsewhere are within noise.
+
+**Corrections to the sections above, from later measurements:**
+- **The empty reply is not a minor cause.** It was marked "looks cheap to fix, but two traces, not a measured rate", and a first test on two explain tasks showed no gain. On the git tasks it was the main failure (6 of 7 failing runs had the right commit in the reasoning and an empty reply), and the nudge fixed it.
+- **The step limit is not what stops the long tasks.** Rerunning the 9 step-limit failures with 100 steps passed 2, and both passed within 25 steps. 6 of the 9 hit the 20-minute clock instead, with 81-98% of the time in the model. So "9 of 18 failures hit the step limit" was not a reason for #29 (compaction), and #26 (hybrid thinking) matters more than the order above says.
+- **Build logs are rarely truncated:** 4 of 55 Maven outputs in failed feature and fix runs, so #24 has little evidence.
+- **Still open:** the feature category (4 / 13, 18 weighted points missing) did not move, and a question the model reads as "needs a command" now gets no shell (`/do` is the way out).
