@@ -28,6 +28,7 @@ from .events import (
     TurnEndReason,
     TurnStart,
 )
+from .policy import NOT_AVAILABLE, QUESTION, QUESTION_HINT, READ_ONLY_TOOLS, WORK, classify
 from .quirks import ToolCall
 from .tools import Tool, ToolError, ToolResult, Workspace
 
@@ -133,6 +134,7 @@ class Agent:
         self.context_used = 0
         self._changes: dict[str, FileChange] = {}
         self._shell_commands = 0
+        self._allowed: frozenset[str] | None = None  # tools this turn may use; None means all
         self.reset()
 
     def reset(self) -> None:
@@ -150,16 +152,21 @@ class Agent:
         self.messages = [{"role": "system", "content": system}]
         self.context_used = 0
 
-    def run(self, task: str) -> TurnEndReason:
-        """Work on one user message until the model stops calling tools."""
+    def run(self, task: str, intent: str | None = None) -> TurnEndReason:
+        """Work on one user message until the model stops calling tools.
+
+        A question gets only the tools that read (beastron.policy); `intent="work"` gives all tools.
+        """
+        mode = intent or classify(task)
+        self._allowed = READ_ONLY_TOOLS if mode == QUESTION else None
         started = time.monotonic()
         model_seconds = 0.0
         prompt_tokens = completion_tokens = 0
         step = 0
         nudges = 0
-        self.emit(TurnStart(task))
-        self.messages.append({"role": "user", "content": task})
-        schemas = [t.schema() for t in self.tools.values()]
+        self.emit(TurnStart(task, mode))
+        self.messages.append({"role": "user", "content": task + ("\n\n" + QUESTION_HINT if mode == QUESTION else "")})
+        schemas = [t.schema() for t in self.tools.values() if self._allowed is None or t.name in self._allowed]
         self._changes: dict[str, FileChange] = {}
         self._shell_commands = 0
 
@@ -224,6 +231,8 @@ class Agent:
     def _execute(self, call: ToolCall) -> tuple[str, bool]:
         """Run one tool call. Returns (output for the model, whether the user denied it)."""
         tool = self.tools.get(call.name)
+        if tool and self._allowed is not None and call.name not in self._allowed:
+            return NOT_AVAILABLE, False
         try:
             args = json.loads(call.arguments or "{}")
         except json.JSONDecodeError as e:
