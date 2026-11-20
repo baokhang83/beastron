@@ -29,7 +29,8 @@ from typing import Any
 from ..agent import Agent
 from ..client import ModelClient, OpenAICompatClient
 from ..config import ModelProfile
-from ..events import DiscardAttempt, ErrorEvent, Event, Nudge, ToolEnd, TurnEnd
+from ..events import (DiscardAttempt, ErrorEvent, Event, Nudge, NumericTestClaims,
+                      StepObservation, ToolEnd, ToolObservation, TurnEnd)
 from ..tools import Workspace, make_tools
 from ..trace import SessionTrace, fan_out, beastron_version, model_digest, state_dir
 from . import sandbox
@@ -60,6 +61,12 @@ class RunResult:
     tool_errors: int = 0
     git_discard_blocked: int = 0
     git_discard_allowed: int = 0
+    tool_seconds: dict[str, float] = field(default_factory=dict)
+    step_usage: list[dict[str, Any]] = field(default_factory=list)
+    short_reads: int = 0
+    overlapping_reads: int = 0
+    whole_file_rewrites: int = 0
+    unsupported_numeric_test_claims: int = 0
     changes: list[dict[str, Any]] = field(default_factory=list)
     shell_commands: int = 0
     error: str | None = None
@@ -80,11 +87,24 @@ class _Collector:
     def __init__(self) -> None:
         self.nudges = self.tool_calls = self.tool_errors = 0
         self.git_discard_blocked = self.git_discard_allowed = 0
+        self.tool_seconds: dict[str, float] = {}
+        self.step_usage: list[dict[str, Any]] = []
+        self.short_reads = self.overlapping_reads = self.whole_file_rewrites = 0
+        self.unsupported_numeric_test_claims = 0
         self.turn_end: TurnEnd | None = None
         self.errors: list[str] = []
 
     def __call__(self, event: Event) -> None:
         match event:
+            case StepObservation():
+                self.step_usage.append(asdict(event))
+            case ToolObservation(name=name, elapsed=elapsed):
+                self.tool_seconds[name] = self.tool_seconds.get(name, 0.0) + elapsed
+                self.short_reads += event.short_read
+                self.overlapping_reads += event.overlapping_read
+                self.whole_file_rewrites += event.whole_file_rewrite
+            case NumericTestClaims(unsupported_count=count):
+                self.unsupported_numeric_test_claims += count
             case DiscardAttempt(blocked=blocked):
                 if blocked:
                     self.git_discard_blocked += 1
@@ -185,6 +205,12 @@ def run_task(
             result.nudges, result.tool_calls, result.tool_errors = collector.nudges, collector.tool_calls, collector.tool_errors
             result.git_discard_blocked = collector.git_discard_blocked
             result.git_discard_allowed = collector.git_discard_allowed
+            result.tool_seconds = {name: round(seconds, 3) for name, seconds in collector.tool_seconds.items()}
+            result.step_usage = collector.step_usage
+            result.short_reads = collector.short_reads
+            result.overlapping_reads = collector.overlapping_reads
+            result.whole_file_rewrites = collector.whole_file_rewrites
+            result.unsupported_numeric_test_claims = collector.unsupported_numeric_test_claims
             result.error = "; ".join(collector.errors) or None
 
             outcomes = evaluate(task.checks, Context(ws.root, _final_answer(agent), before))

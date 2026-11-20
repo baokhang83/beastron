@@ -14,6 +14,7 @@ from pathlib import Path
 from .briefing import Briefing, budget_for, build_briefing
 from .client import Message, ModelClient, ModelError
 from .discard_guard import DiscardGuard
+from .observability import Observer
 from .events import (
     ApprovalRequest,
     ContextUpdate,
@@ -23,6 +24,9 @@ from .events import (
     FileChange,
     ModelEnd,
     ModelStart,
+    StepObservation,
+    ToolObservation,
+    NumericTestClaims,
     Nudge,
     ReasoningDelta,
     TextDelta,
@@ -204,6 +208,7 @@ class Agent:
         self._changes: dict[str, FileChange] = {}
         self._shell_commands = 0
         self._discard_guard = DiscardGuard(self.workspace.root)
+        self._observer = Observer()
 
         def finish(reason: TurnEndReason) -> TurnEndReason:
             self.emit(
@@ -227,6 +232,9 @@ class Agent:
                 model_seconds += time.monotonic() - t0
                 self.emit(ModelEnd(step))
 
+                self.emit(StepObservation(step, reply.prompt_tokens, reply.completion_tokens,
+                                          len(reply.content), reply.reasoning_in_reply_chars))
+
                 prompt_tokens += reply.prompt_tokens or 0
                 completion_tokens += reply.completion_tokens or 0
                 self.messages.append(self.client.assistant_message(reply))
@@ -249,6 +257,7 @@ class Agent:
                         self.emit(Nudge(f"a {operation} is still in progress"))
                         self.messages.append({"role": "user", "content": unfinished_git_message(operation)})
                         continue
+                    self.emit(NumericTestClaims(self._observer.unsupported_test_counts(reply.content)))
                     return finish("done")
                 # A denial ends the turn: the user said no, so control goes back
                 # to them instead of letting the model try again on its own.
@@ -271,6 +280,7 @@ class Agent:
 
     def _execute(self, call: ToolCall) -> tuple[str, bool]:
         """Run one tool call. Returns (output for the model, whether the user denied it)."""
+        tool_started = time.monotonic()
         tool = self.tools.get(call.name)
         if tool and self._allowed is not None and call.name not in self._allowed:
             return NOT_AVAILABLE, False
@@ -310,6 +320,10 @@ class Agent:
         if result.change:
             merge_change(self._changes, result.change)
         self.emit(ToolEnd(call.id, call.name, result.ok, result.summary, result.output))
+        short, overlap = self._observer.tool_result(call.name, args if isinstance(args, dict) else {},
+                                                    result.output, result.summary, result.ok)
+        self.emit(ToolObservation(call.id, call.name, time.monotonic() - tool_started, short, overlap,
+                                  bool(call.name == 'write_file' and result.change and result.change.kind == 'modified')))
         output = result.output
         if len(output) > MAX_TOOL_OUTPUT:
             output = output[:MAX_TOOL_OUTPUT] + f"\n[... output cut at {MAX_TOOL_OUTPUT} characters]"
