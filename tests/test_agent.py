@@ -252,3 +252,51 @@ def test_interrupt_repairs_history(tmp_path):
     agent, _, _ = make_agent(tmp_path, [call("run_shell", '{"command": "ls"}')], approve=interrupt)
     assert agent.run("go") == "interrupted"
     assert agent.messages[-1] == {"role": "tool", "tool_call_id": "c1", "content": "Interrupted by the user."}
+
+
+def test_raw_tool_markup_is_nudged_then_tool_can_run(tmp_path):
+    agent, client, events = make_agent(tmp_path, [
+        ModelReply(content='Let me read it. <function=read_file></tool_call>'),
+        call('read_file', '{"path": "hello.txt"}'), ModelReply(content='It says hi.'),
+    ])
+    assert agent.run('read it') == 'done'
+    assert client.seen[1][-1]['content'] == (
+        '[beastron] Your response contained raw tool-call markup as text instead of executing a tool. '
+        'Call the tool directly now.'
+    )
+    assert tool_results(agent) == ['hi there\n']
+    assert any('raw tool-call markup' in getattr(e, 'reason', '') for e in events if getattr(e, 'reason', None))
+
+
+def test_raw_markup_shares_existing_two_nudge_limit(tmp_path):
+    agent, client, _ = make_agent(tmp_path, [ModelReply(content=''), ModelReply(content='</tool_call>'),
+                                              ModelReply(content='<tool_call>')])
+    assert agent.run('go') == 'done'
+    assert len(client.seen) == 3
+
+
+def test_real_tool_calls_are_not_nudged_even_if_content_has_markup(tmp_path):
+    reply = call('read_file', '{"path": "hello.txt"}')
+    reply.content = '<tool_call>'
+    agent, client, _ = make_agent(tmp_path, [reply, ModelReply(content='done')])
+    assert agent.run('go') == 'done'
+    assert len(client.seen) == 2 and tool_results(agent) == ['hi there\n']
+
+
+def test_agent_uses_current_profile_step_limit_unless_explicitly_overridden(tmp_path):
+    from dataclasses import replace
+    ws = Workspace(tmp_path)
+    client = FakeClient([call('list_files', '{}') for _ in range(2)])
+    client.profile = replace(PROFILE, max_steps=2)
+    agent = Agent(client, ws, make_tools(ws), lambda e: None, lambda r: True, briefing=False)
+    assert agent.run('go') == 'max_steps' and len(client.seen) == 2
+    client.profile = replace(PROFILE, max_steps=1)
+    client.replies = [call('list_files', '{}')]
+    assert agent.run('go') == 'max_steps' and len(client.seen) == 3
+
+
+def test_raw_markup_is_nudged_only_once_per_turn(tmp_path):
+    agent, client, _ = make_agent(tmp_path, [ModelReply(content='<tool_call>'),
+                                              ModelReply(content='<function=read_file>')])
+    assert agent.run('go') == 'done'
+    assert len(client.seen) == 2

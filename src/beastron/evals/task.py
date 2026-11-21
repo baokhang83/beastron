@@ -81,6 +81,7 @@ class Task:
     checks: list[Check]
     timeout: int = 600
     max_steps: int = 25
+    max_steps_explicit: bool = False
     tags: tuple[str, ...] = field(default_factory=tuple)
 
 
@@ -134,6 +135,7 @@ def load_task(task_dir: Path) -> Task:
         checks=checks,
         timeout=data.get("timeout", 600),
         max_steps=data.get("max_steps", 25),
+        max_steps_explicit="max_steps" in data,
         tags=tuple(tags),
     )
 

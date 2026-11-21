@@ -13,6 +13,13 @@ base_url = "http://localhost:11434/v1"
 model = "qwen3.5:9b"
 context = 32768  # keep in sync with OLLAMA_CONTEXT_LENGTH on the server
 
+[models.qwen3-coder-30b-native]
+base_url = "http://localhost:11434/v1"
+model = "beastron-qwen3-coder-q3-native:latest"
+context = 32768
+temperature = 0.7
+max_steps = 40
+
 [models.qwen3-8b-local]
 base_url = "http://localhost:11434/v1"
 model = "qwen3:8b"

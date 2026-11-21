@@ -66,7 +66,7 @@ Claude Code passed every run, so it sits at the ceiling and **beastron's score i
 
 - **Questions get read-only tools.** A request that only asks something gets the reading tools, so editing is impossible. `/do REQUEST` runs a request with every tool.
 - **Safety:** file tools can't reach outside the project or write inside `.git/`. Shell commands run with your permissions, so read each one before approving. A guard blocks common Git discard commands (`stash`, `reset --hard`, `restore`, `clean`, `checkout --`) when they would discard changes made during the task. It is **not a security boundary**, does not cover `git branch -D`, and does not protect uncommitted work already present at the start of the task.
-- **Guardrails for small models:** a nudge when the model announces a step without taking it, when its reply is empty (including when the answer was only in its reasoning), and when a merge, cherry-pick or rebase is still unfinished at the end of the turn; invalid tool calls go back as errors; a failed edit shows the closest matching text; saying "no" ends the turn; a task stops after 25 model calls.
+- **Guardrails for small models:** a nudge when the model announces a step without taking it, when its reply is empty (including when the answer was only in its reasoning), and when a merge, cherry-pick or rebase is still unfinished at the end of the turn; invalid tool calls go back as errors; a failed edit shows the closest matching text; saying "no" ends the turn; a task stops after the profile’s step limit (25 model calls by default).
 - **A change record** from the tools themselves, not from the model's summary, which can be wrong.
 - **A project briefing:** at session start beastron reads the project's documentation (`AGENTS.md`, else `README.md`, plus linked docs).
 - **Session traces** in `~/.local/state/beastron/sessions/`: what you asked, each tool call with its output, tokens, timing and the exact model file.
@@ -117,7 +117,7 @@ beastron eval reference                   # Claude Code on the same tasks (a rea
 
 ## Models
 
-Profiles live in `models.toml`: a server URL, a model name and a context size, plus optional settings (`effort` to turn thinking off, `temperature`, `quirks` such as `send_reasoning_back` for gpt-oss, `api_key_env` for hosted providers). The default is `qwen35-9b`. Other models were compared in [docs/model-comparison.md](docs/model-comparison.md): `qwen3:8b` scored 40%, and Devstral Small 2 did not beat `qwen3.5:9b` and only fits the GPU at a 16K context. Hosted services can be used through `api_key_env`, but that sends your code to the provider, which goes against the point of the project; it is meant for benchmarking.
+Profiles live in `models.toml`: a server URL, a model name and a context size, plus optional settings (`effort` to turn thinking off, `temperature`, `max_steps` (overridden by `--max-steps` or an explicit eval task limit), `quirks` such as `send_reasoning_back` for gpt-oss, `api_key_env` for hosted providers). The default is `qwen35-9b`. Other models were compared in [docs/model-comparison.md](docs/model-comparison.md): `qwen3:8b` scored 40%, and Devstral Small 2 did not beat `qwen3.5:9b` and only fits the GPU at a 16K context. Hosted services can be used through `api_key_env`, but that sends your code to the provider, which goes against the point of the project; it is meant for benchmarking.
 
 ## Roadmap
 

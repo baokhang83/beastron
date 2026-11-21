@@ -78,7 +78,7 @@ def main(
     task: Annotated[str | None, typer.Argument(help="Run this one task and exit. Omit for interactive mode.")] = None,
     model: Annotated[str | None, typer.Option("--model", "-m", help="Model profile from models.toml.")] = None,
     config: Annotated[Path | None, typer.Option("--config", "-c", help="Path to models.toml.")] = None,
-    max_steps: Annotated[int, typer.Option(help="Maximum model calls per task.")] = 25,
+    max_steps: Annotated[int | None, typer.Option(min=1, help="Maximum model calls per task (overrides the profile).")] = None,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show reasoning and full tool output.")] = False,
     briefing: Annotated[
         bool, typer.Option("--briefing/--no-briefing", help="Read the project's docs (AGENTS.md, README.md, ...) at startup.")

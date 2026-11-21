@@ -161,7 +161,7 @@ class Agent:
         tools: list[Tool],
         on_event: Callable[[Event], None],
         approve: Approver,
-        max_steps: int = 25,
+        max_steps: int | None = None,
         briefing: bool = True,
     ) -> None:
         self.client = client
@@ -207,6 +207,7 @@ class Agent:
         step = 0
         nudges = 0
         git_reminded = False
+        markup_nudged = False
         self.emit(TurnStart(task, mode))
         self.messages.append({"role": "user", "content": task + ("\n\n" + QUESTION_HINT if mode == QUESTION else "")})
         schemas = [t.schema() for t in self.tools.values() if self._allowed is None or t.name in self._allowed]
@@ -225,7 +226,8 @@ class Agent:
             return reason
 
         try:
-            for step in range(1, self.max_steps + 1):
+            limit = self.max_steps if self.max_steps is not None else self.client.profile.max_steps
+            for step in range(1, limit + 1):
                 self.emit(ModelStart(step))
                 t0 = time.monotonic()
                 reply = self.client.complete(
@@ -246,6 +248,16 @@ class Agent:
                 self._update_context(reply.prompt_tokens, reply.completion_tokens)
 
                 if not reply.tool_calls:
+                    if (not markup_nudged and nudges < MAX_NUDGES
+                            and any(tag in reply.content for tag in ("<tool_call>", "</tool_call>", "<function="))):
+                        nudges += 1
+                        markup_nudged = True
+                        self.emit(Nudge("raw tool-call markup was returned as text"))
+                        self.messages.append({"role": "user", "content": (
+                            "[beastron] Your response contained raw tool-call markup as text instead of executing a tool. "
+                            "Call the tool directly now."
+                        )})
+                        continue
                     if nudges < MAX_NUDGES and not reply.content.strip():
                         nudges += 1
                         if reply.reasoning.strip():
