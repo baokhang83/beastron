@@ -67,6 +67,10 @@ EMPTY_REPLY_MESSAGE = (
     "[beastron] Your last reply was empty: your answer was only in your reasoning, which the user does not see. "
     "Write your final answer now as a normal reply."
 )
+COMPLETELY_EMPTY_REPLY_MESSAGE = (
+    "[beastron] Your last reply was empty. If there is more to do, call a tool now. "
+    "If the task is complete, reply with your final summary."
+)
 
 
 def unfinished_git_operation(root: Path) -> str | None:
@@ -242,10 +246,15 @@ class Agent:
                 self._update_context(reply.prompt_tokens, reply.completion_tokens)
 
                 if not reply.tool_calls:
-                    if nudges < MAX_NUDGES and not reply.content.strip() and reply.reasoning.strip():
+                    if nudges < MAX_NUDGES and not reply.content.strip():
                         nudges += 1
-                        self.emit(Nudge("the reply was empty: the answer was only in the reasoning"))
-                        self.messages.append({"role": "user", "content": EMPTY_REPLY_MESSAGE})
+                        if reply.reasoning.strip():
+                            self.emit(Nudge("the reply was empty: the answer was only in the reasoning"))
+                            message = EMPTY_REPLY_MESSAGE
+                        else:
+                            self.emit(Nudge("the reply was completely empty"))
+                            message = COMPLETELY_EMPTY_REPLY_MESSAGE
+                        self.messages.append({"role": "user", "content": message})
                         continue
                     if nudges < MAX_NUDGES and announces_unfinished_action(reply.content):
                         nudges += 1

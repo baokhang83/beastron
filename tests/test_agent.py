@@ -159,10 +159,28 @@ def test_an_empty_reply_with_the_answer_in_the_reasoning_gets_a_nudge(tmp_path):
     assert agent.messages[-1]["content"] == "Add a --verbose flag to the parser."
 
 
-def test_an_empty_reply_without_reasoning_is_not_nudged(tmp_path):
-    agent, client, _ = make_agent(tmp_path, [ModelReply(content="")])
+def test_an_empty_reply_without_reasoning_is_nudged(tmp_path):
+    agent, client, events = make_agent(tmp_path, [ModelReply(content=""), ModelReply(content="done")])
     assert agent.run("go") == "done"
-    assert len(client.seen) == 1
+    assert len(client.seen) == 2
+    assert client.seen[1][-1]["content"] == (
+        "[beastron] Your last reply was empty. If there is more to do, call a tool now. "
+        "If the task is complete, reply with your final summary."
+    )
+    assert any(getattr(e, "reason", None) == "the reply was completely empty" for e in events)
+
+
+def test_completely_empty_replies_share_two_nudge_limit(tmp_path):
+    agent, client, _ = make_agent(tmp_path, [ModelReply(content="") for _ in range(4)])
+    assert agent.run("go") == "done"
+    assert len(client.seen) == 3
+
+
+def test_empty_content_with_tool_call_is_not_empty_reply(tmp_path):
+    agent, client, events = make_agent(tmp_path, [call("read_file", '{"path": "hello.txt"}'), ModelReply(content="done")])
+    assert agent.run("go") == "done"
+    assert len(client.seen) == 2
+    assert not any(getattr(e, "reason", None) == "the reply was completely empty" for e in events)
 
 
 def test_empty_reply_nudges_share_the_limit(tmp_path):
