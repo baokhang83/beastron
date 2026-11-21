@@ -170,3 +170,12 @@ def test_the_sandbox_blocks_writes_outside_the_workspace(tmp_path, run_dir):
         assert "Operation not permitted" in shell["output"]  # and the attempt is recorded
     finally:
         outside.unlink(missing_ok=True)
+
+
+def test_incomplete_model_turn_does_not_pass_even_if_check_succeeds(tmp_path, run_dir):
+    task = make_task(tmp_path, checks='[[checks]]\ntype = "contains"\npath = "README.md"\ntext = "Demo"\n')
+    malformed = ModelReply(content="I'll do it. <function=list_files></function></tool_call>")
+    result = run_task(task, PROFILE, run_dir=run_dir, use_sandbox=False,
+                      client_factory=scripted(malformed, malformed, malformed))
+    assert result.reason == 'incomplete' and not result.passed
+    assert all(check['passed'] for check in result.checks)

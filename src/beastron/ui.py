@@ -7,17 +7,17 @@ import time
 from pathlib import Path
 from typing import Any
 
-from rich.console import Console, ConsoleOptions, RenderableType, RenderResult
+from rich.console import Console, RenderableType
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.segment import Segment
 from rich.spinner import Spinner
 from rich.syntax import Syntax
 from rich.text import Text
 
 from .briefing import Briefing
 from .config import ModelProfile
+from .permissions import PermissionMode, auto_approve
 from .events import (
     ApprovalRequest,
     ContextUpdate,
@@ -49,17 +49,26 @@ def fmt_path(path: Path) -> str:
     return f"~/{path.relative_to(home)}" if path.is_relative_to(home) else str(path)
 
 
-class _Tail:
-    """Renders only the last screenful of a renderable, for live streaming."""
+def visible_model_text(text: str, *, final: bool = False) -> str:
+    """Suppress leaked tool markup in the display, including split stream tags.
 
-    def __init__(self, renderable: RenderableType) -> None:
-        self.renderable = renderable
-
-    def __rich_console__(self, console: Console, options: ConsoleOptions) -> RenderResult:
-        lines = console.render_lines(self.renderable, options, pad=False)
-        for line in lines[-max(console.size.height - 3, 3) :]:
-            yield from line
-            yield Segment.line()
+    The original model reply remains unchanged for the agent and trace.
+    """
+    markers = ("<function=", "<parameter=", "<tool_call>", "</tool_call>")
+    positions = [text.find(marker) for marker in markers if marker in text]
+    if positions:
+        start = min(positions)
+        if text[:start].count("```") % 2:
+            return text
+        end = text.find("</tool_call>", start)
+        return text[:start] + (text[end + len("</tool_call>"):] if end >= 0 else "")
+    if final:
+        return text
+    # Hold a possible marker prefix until the next chunk disambiguates it.
+    for size in range(min(len(text), max(map(len, markers)) - 1), 0, -1):
+        if any(marker.startswith(text[-size:]) for marker in markers):
+            return text[:-size]
+    return text
 
 
 class _Thinking:
@@ -79,7 +88,9 @@ class _Thinking:
 
 
 class RichUI:
-    def __init__(self, console: Console | None = None, verbose: bool = False) -> None:
+    def __init__(self, console: Console | None = None, verbose: bool = False,
+                 mode: PermissionMode | str = PermissionMode.ASK) -> None:
+        self.mode = PermissionMode(mode)
         self.console = console or Console(highlight=False)
         self.verbose = verbose
         self.always_allow: set[str] = set()
@@ -102,7 +113,7 @@ class RichUI:
         self.console.print(line)
         if briefing is not None:
             self.briefing_line(briefing)
-        self.console.print(Text("  /help for commands · Ctrl-C stops the agent · Ctrl-D quits", style="dim"))
+        self.console.print(Text("  /help for commands · Shift+Tab toggles mode · Ctrl-C stops the agent · Ctrl-D quits", style="dim"))
         self.console.print()
 
     def briefing_line(self, briefing: Briefing) -> None:
@@ -138,15 +149,17 @@ class RichUI:
                     self._thinking.reasoning_chars += len(t)
             case TextDelta(text=t):
                 self._text += t
-                if self._live:
-                    self._live.update(_Tail(Markdown(self._text)))
             case ModelEnd():
                 self._stop_live()
                 if self.verbose and self._reasoning.strip():
                     self.console.print(Text(self._reasoning.strip(), style="dim italic"))
                     self.console.print()
-                if self._text.strip():
-                    self.console.print(Markdown(self._text.strip()))
+                visible = visible_model_text(self._text, final=True).strip()
+                # The agent will retry malformed calls; their prefatory prose is
+                # not a completed answer and need not be printed each time.
+                malformed = visible != self._text.strip()
+                if visible and not malformed:
+                    self.console.print(Markdown(visible))
                     self.console.print()
             case ToolStart(name=name, args=args):
                 line = Text()
@@ -156,7 +169,9 @@ class RichUI:
                 if summary:
                     line.append(f"  {summary}", style="dim")
                 self.console.print(line)
-            case ToolEnd(ok=ok, summary=summary, output=output):
+            case ToolEnd(name=name, ok=ok, summary=summary, output=output):
+                if name == "git" and not ok and "not a git repository" in output.lower():
+                    summary = "not a Git repository"
                 mark, style = ("✓", "green") if ok else ("✗", "red")
                 line = Text("  ⎿ ", style="dim")
                 line.append(f"{mark} ", style=style)
@@ -178,6 +193,7 @@ class RichUI:
     def _turn_summary(self, end: TurnEnd) -> None:
         marks = {
             "done": ("✓ done", "green"),
+            "incomplete": ("⚠ incomplete: the model did not execute its intended action", "yellow"),
             "denied": ("✗ stopped: you denied the action; tell beastron what to do instead", "yellow"),
             "max_steps": ("⚠ stopped at the step limit", "yellow"),
             "interrupted": ("✗ interrupted", "yellow"),
@@ -216,8 +232,6 @@ class RichUI:
                 if change.kind != "deleted":
                     line.append(f"  +{change.added} -{change.removed}", style="dim")
                 self.console.print(line)
-        elif end.reason != "error":
-            self.console.print(Text("   no files changed by beastron's file tools", style="dim"))
         if end.shell_commands:
             n = end.shell_commands
             self.console.print(
@@ -229,7 +243,7 @@ class RichUI:
     def approve(self, request: ApprovalRequest) -> bool:
         self._stop_live()
         p = request.preview
-        body = _head(p.body, MAX_PREVIEW_LINES)
+        body = _delete_preview(p.body, self.console.width) if request.tool == "delete_file" else _head(p.body, MAX_PREVIEW_LINES)
         lexer = "diff" if p.kind == "diff" else "bash"
         self.console.print(
             Panel(
@@ -240,6 +254,8 @@ class RichUI:
                 padding=(0, 1),
             )
         )
+        if auto_approve(self.mode, request.tool, request.args):
+            return True
         if request.tool in self.always_allow:
             self.info(f"allowed (always allow {request.tool} is on)")
             return True
@@ -296,6 +312,19 @@ def _arg_summary(name: str, args: dict[str, Any], root: Path | None = None) -> s
     if root:  # models often send absolute paths; show them relative to the project
         value = value.replace(f"{root}/", "").replace(str(root), ".")
     return value if len(value) <= 90 else value[:87] + "..."
+
+
+
+def _delete_preview(text: str, width: int) -> str:
+    """Show up to three deleted lines, clipped to the panel width."""
+    lines = text.rstrip().splitlines()
+    if len(lines) >= 3 and lines[0].startswith("--- ") and lines[1].startswith("+++ ") and lines[2].startswith("@@"):
+        lines = lines[3:]
+    limit = max(1, width - 6)  # panel border and padding
+    visible = [line if len(line) <= limit else line[:max(0, limit - 1)] + "…" for line in lines[:3]]
+    if len(lines) > 3:
+        visible.append(f"... {len(lines) - 3} more lines")
+    return "\n".join(visible)
 
 
 def _head(text: str, max_lines: int) -> str:

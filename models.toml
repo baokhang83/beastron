@@ -19,6 +19,7 @@ model = "beastron-qwen3-coder-q3-native:latest"
 context = 32768
 temperature = 0.7
 max_steps = 40
+quirks = ["recover_function_markup"]
 
 [models.gpt-oss-20b]
 base_url = "http://localhost:11434/v1"

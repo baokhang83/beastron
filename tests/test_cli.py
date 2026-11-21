@@ -90,3 +90,54 @@ def test_step_limit_follows_profile_unless_cli_overrides(config, monkeypatch):
     assert invoke('--config', str(config), '--no-trace', 'task').exit_code == 0
     assert invoke('--config', str(config), '--no-trace', '--max-steps', '25', 'task').exit_code == 0
     assert seen == [(None, 40), (25, 40)]
+
+
+@pytest.mark.parametrize(('options', 'expected'), [([], 'auto'), (['--mode', 'ask'], 'ask'),
+                                                     (['--mode', 'auto'], 'auto'), (['--ask'], 'ask'),
+                                                     (['--no-auto'], 'ask')])
+def test_permission_mode_cli(config, monkeypatch, options, expected):
+    seen = []
+    def fake_run(self, task):
+        seen.append(self.approve.__self__.mode)
+        return 'done'
+    monkeypatch.setattr(Agent, 'run', fake_run)
+    result = invoke('--config', str(config), '--no-trace', *options, 'task')
+    assert result.exit_code == 0, result.output
+    assert seen == [expected]
+
+
+def test_invalid_mode_is_rejected(config):
+    assert invoke('--config', str(config), '--mode', 'plan', 'task').exit_code != 0
+
+
+def test_mode_command_changes_mode_and_rejects_invalid_value(tmp_path):
+    from io import StringIO
+    from rich.console import Console
+    from beastron.ui import RichUI
+    ui = RichUI(console=Console(file=StringIO()), mode='auto')
+    cli._command('/mode ask', None, ui, None)
+    assert ui.mode == 'ask'
+    cli._command('/mode plan', None, ui, None)
+    assert ui.mode == 'ask'
+    cli._command('/mode auto', None, ui, None)
+    assert ui.mode == 'auto'
+    cli._command('/mode', None, ui, None)
+    assert '[auto]' in ui.console.file.getvalue()
+
+
+def test_shift_tab_toggles_permission_mode_and_prompt_shows_it():
+    from io import StringIO
+    from types import SimpleNamespace
+    from prompt_toolkit.keys import Keys
+    from rich.console import Console
+    from beastron.ui import RichUI
+    ui = RichUI(console=Console(file=StringIO()), mode='auto')
+    assert '[auto]' in cli._mode_prompt(ui).value
+    assert '<ansibrightblack>(shift+tab to toggle)</ansibrightblack>' in cli._mode_prompt(ui).value
+    bindings = cli._mode_bindings(ui)
+    binding = bindings.get_bindings_for_keys((Keys.BackTab,))[0]
+    event = SimpleNamespace(app=SimpleNamespace(invalidate=lambda: None))
+    binding.handler(event)
+    assert ui.mode == 'ask' and '[ask]' in cli._mode_prompt(ui).value
+    binding.handler(event)
+    assert ui.mode == 'auto'

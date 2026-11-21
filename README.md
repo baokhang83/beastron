@@ -60,13 +60,14 @@ Claude Code passed every run, so it sits at the ceiling and **beastron's score i
 
 - **An agent loop with tools:**
 
-  | Tool | Approval |
+  | Tool | Approval in auto mode |
   |---|---|
   | `list_files`, `search_code`, `read_file` | no |
   | `git` (read-only: `status`, `diff`, `log`, `show`) | no |
-  | `write_file`, `edit_file`, `delete_file` | yes, after showing a diff |
-  | `run_shell` | yes, after showing the command |
+  | `write_file`, `edit_file`, `delete_file` | automatic, after showing a diff |
+  | `run_shell` | yes, except simple project file-name searches |
 
+- **Permission modes:** auto is the default and approves project-scoped file changes after showing their diffs; shell commands require approval except for simple read-only file-name searches rooted at the project. Use `--mode ask`, `--ask` or `--no-auto` to ask about every file change, or `/mode auto` and `/mode ask` in a session. Shift+Tab toggles the mode in supported terminals.
 - **Questions get read-only tools.** A request that only asks something gets the reading tools, so editing is impossible. `/do REQUEST` runs a request with every tool.
 - **Safety:** file tools can't reach outside the project or write inside `.git/`. Shell commands run with your permissions, so read each one before approving. A guard blocks common Git discard commands (`stash`, `reset --hard`, `restore`, `clean`, `checkout --`) when they would discard changes made during the task. It is **not a security boundary**, does not cover `git branch -D`, and does not protect uncommitted work already present at the start of the task.
 - **Guardrails for small models:** a nudge when the model announces a step without taking it, when its reply is empty (including when the answer was only in its reasoning), and when a merge, cherry-pick or rebase is still unfinished at the end of the turn; invalid tool calls go back as errors; a failed edit shows the closest matching text; saying "no" ends the turn; a task stops after the profile’s step limit (25 model calls by default).
@@ -119,11 +120,13 @@ cd ~/Documents/my-project
 beastron                                  # interactive session
 beastron "fix the failing test"           # one task, then exit
 beastron -m qwen3-8b-local                # pick a model profile
+beastron --ask                            # ask before file changes
+beastron --mode auto                      # approve file changes automatically
 beastron -v                               # show reasoning and full tool output
 beastron --no-trace                       # don't record the session
 ```
 
-Commands inside a session: `/help`, `/models`, `/model NAME`, `/do REQUEST`, `/clear`, `/context`, `/verbose`, `/quit`. Ctrl-C stops the agent; Ctrl-D quits.
+The grey input area supports multiple lines: Enter sends, while Option+Enter or Ctrl-J adds a line. Set `BEASTRON_THEME=light` for a light terminal. The bright-yellow `[auto]` or `[ask]` indicator below the input shows the current permission mode. Commands inside a session: `/help`, `/models`, `/model NAME`, `/mode [auto|ask]`, `/do REQUEST`, `/clear`, `/context`, `/verbose`, `/quit`. Ctrl-C stops the agent; Ctrl-D quits.
 
 **Measuring** (details in [evals/README.md](evals/README.md)):
 
@@ -138,7 +141,7 @@ beastron eval reference                   # Claude Code on the same tasks (a rea
 
 ## Models
 
-Profiles live in `models.toml`: a server URL, a model name and a context size, plus optional settings (`effort` to turn thinking off, `temperature`, `max_steps` (overridden by `--max-steps` or an explicit eval task limit), `quirks` such as `send_reasoning_back` for gpt-oss, `api_key_env` for hosted providers). The default is `qwen3-coder-30b-native`; `qwen35-9b` and `gpt-oss-20b` remain available with `-m` after pulling their models. Other models were compared in [docs/model-comparison.md](docs/model-comparison.md): `qwen3:8b` scored 40%, and Devstral Small 2 did not beat `qwen3.5:9b` and only fits the GPU at a 16K context. Hosted services can be used through `api_key_env`, but that sends your code to the provider, which goes against the point of the project; it is meant for benchmarking.
+Profiles live in `models.toml`: a server URL, a model name and a context size, plus optional settings (`effort` to turn thinking off, `temperature`, `max_steps` (overridden by `--max-steps` or an explicit eval task limit), `quirks` such as `send_reasoning_back` for gpt-oss, `api_key_env` for hosted providers). The default is `qwen3-coder-30b-native`; its profile recovers unambiguous tool-call markup that this model sometimes emits as text, using the same tool checks and approvals. `qwen35-9b` and `gpt-oss-20b` remain available with `-m` after pulling their models. Other models were compared in [docs/model-comparison.md](docs/model-comparison.md): `qwen3:8b` scored 40%, and Devstral Small 2 did not beat `qwen3.5:9b` and only fits the GPU at a 16K context. Hosted services can be used through `api_key_env`, but that sends your code to the provider, which goes against the point of the project; it is meant for benchmarking.
 
 ## Roadmap
 

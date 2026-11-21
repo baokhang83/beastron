@@ -17,6 +17,8 @@ KNOWN_QUIRKS = {
     # Send the model's reasoning back in the assistant message history.
     # gpt-oss needs this or its tool use degrades.
     "send_reasoning_back",
+    # Recover a single well-formed function block emitted as raw assistant text.
+    "recover_function_markup",
 }
 
 CONFIG_LOCATIONS = (

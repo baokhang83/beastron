@@ -69,7 +69,7 @@ def make_shell_tool(ws: Workspace, prefix: list[str] | None = None) -> Tool:
     return Tool(
         "run_shell",
         "Run a shell command in the project root (for example tests, linters, git). "
-        "The user approves each command. Commands cannot read from stdin.",
+        "Commands are subject to the permission mode. Commands cannot read from stdin.",
         {
             "type": "object",
             "properties": {
