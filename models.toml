@@ -3,7 +3,7 @@
 # beastron looks for this file in the current folder, then ~/.config/beastron/models.toml
 # (or wherever BEASTRON_CONFIG points).
 
-default = "qwen35-9b"
+default = "qwen3-coder-30b-native"
 
 # Measured on the 57-task eval suite (see docs/model-comparison.md): qwen3.5:9b passed 39 of 57
 # runs (usage-weighted score 67% of the Claude Code reference), qwen3:8b with thinking 22 of 57 (40%).
@@ -19,6 +19,12 @@ model = "beastron-qwen3-coder-q3-native:latest"
 context = 32768
 temperature = 0.7
 max_steps = 40
+
+[models.gpt-oss-20b]
+base_url = "http://localhost:11434/v1"
+model = "gpt-oss:20b"
+context = 32768
+quirks = ["send_reasoning_back"]
 
 [models.qwen3-8b-local]
 base_url = "http://localhost:11434/v1"

@@ -80,7 +80,23 @@ Claude Code passed every run, so it sits at the ceiling and **beastron's score i
 ```bash
 # 1. Model server (Ollama). On Apple M5 Macs the tensor setting is required for now.
 GGML_METAL_TENSOR_DISABLE=1 OLLAMA_CONTEXT_LENGTH=32768 ollama serve
-ollama pull qwen3.5:9b          # the default profile; uses about 15-18 GB at a 32K context
+# In a second terminal, download the Q3 model and create the native tool-call tag.
+ollama pull hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M
+cat > Modelfile.qwen3-coder <<'EOF'
+FROM hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_M
+TEMPLATE {{ .Prompt }}
+RENDERER qwen3-coder
+PARSER qwen3-coder
+PARAMETER stop <|im_start|>
+PARAMETER stop <|im_end|>
+PARAMETER stop <|endoftext|>
+PARAMETER temperature 0.7
+PARAMETER top_p 0.8
+PARAMETER top_k 20
+PARAMETER repeat_penalty 1.05
+PARAMETER min_p 0
+EOF
+ollama create beastron-qwen3-coder-q3-native -f Modelfile.qwen3-coder
 
 # 2. Install beastron as a command you can run from any folder.
 uv tool install --editable ~/Documents/beastron
@@ -89,6 +105,8 @@ uv tool install --editable ~/Documents/beastron
 mkdir -p ~/.config/beastron
 ln -s ~/Documents/beastron/models.toml ~/.config/beastron/models.toml
 ```
+
+The native `qwen3-coder` renderer and parser are needed for tool calls with this GGUF. The Q3 model fits fully on the reference 24 GB M5 GPU at a 32K context.
 
 uv puts the `beastron` command in `~/.local/bin`. If your shell can't find it, run `uv tool update-shell` and open a new terminal.
 
@@ -120,11 +138,11 @@ beastron eval reference                   # Claude Code on the same tasks (a rea
 
 ## Models
 
-Profiles live in `models.toml`: a server URL, a model name and a context size, plus optional settings (`effort` to turn thinking off, `temperature`, `max_steps` (overridden by `--max-steps` or an explicit eval task limit), `quirks` such as `send_reasoning_back` for gpt-oss, `api_key_env` for hosted providers). The default is `qwen35-9b`. Other models were compared in [docs/model-comparison.md](docs/model-comparison.md): `qwen3:8b` scored 40%, and Devstral Small 2 did not beat `qwen3.5:9b` and only fits the GPU at a 16K context. Hosted services can be used through `api_key_env`, but that sends your code to the provider, which goes against the point of the project; it is meant for benchmarking.
+Profiles live in `models.toml`: a server URL, a model name and a context size, plus optional settings (`effort` to turn thinking off, `temperature`, `max_steps` (overridden by `--max-steps` or an explicit eval task limit), `quirks` such as `send_reasoning_back` for gpt-oss, `api_key_env` for hosted providers). The default is `qwen3-coder-30b-native`; `qwen35-9b` and `gpt-oss-20b` remain available with `-m` after pulling their models. Other models were compared in [docs/model-comparison.md](docs/model-comparison.md): `qwen3:8b` scored 40%, and Devstral Small 2 did not beat `qwen3.5:9b` and only fits the GPU at a 16K context. Hosted services can be used through `api_key_env`, but that sends your code to the provider, which goes against the point of the project; it is meant for benchmarking.
 
 ## Roadmap
 
-Milestones M0 (scoreboard), M1 (real usage and tasks) and M2 (reference and model choice) are done. **M3, reliability and tiers, is in progress:** read-only questions and the git fixes are in; next is measuring a stronger model on the long tasks and, if it helps, switching to it automatically (issue #32). M4 (feedback from daily use) and M5 (regression discipline) are planned. See the [issues](https://github.com/baokhang83/beastron/issues) and [docs/plan.md](docs/plan.md).
+Milestones M0 (scoreboard), M1 (real usage and tasks) and M2 (reference and model choice) are complete; M3 (reliability and tiers) is closed. M4 (feedback from daily use) and M5 (regression discipline) are planned. The 81.04% M3 result is a hybrid; a fresh full-suite baseline remains to be measured. See the [issues](https://github.com/baokhang83/beastron/issues) and [docs/plan.md](docs/plan.md).
 
 ## Layout
 

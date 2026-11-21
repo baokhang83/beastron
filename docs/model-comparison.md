@@ -85,8 +85,8 @@ Devstral is therefore **not chosen**. This does not rule out a better result wit
 
 ## The choice
 
-- **Default: `qwen35-9b`.** It remains the configured default. The later full run scored 72.21%; the original comparison below measured 67%.
-- **Candidate: Qwen3-Coder 30B-A3B Q3.** Its hybrid result is 81.04%, pending a fresh full-suite run with the two harness changes.
+- **Default: Qwen3-Coder 30B-A3B Q3.** Its hybrid result is 81.04%, pending a fresh full-suite run with the two harness changes.
+- **Secondary: `qwen35-9b`.** The later full run scored 72.21%; the original comparison above measured 67%.
 - **Fast profile: none chosen.** The only fast candidate was dropped, so `models.toml` keeps `qwen3-8b-fast`, marked as unmeasured. A fast profile needs a measured candidate: for example `qwen35-9b` with thinking off, which was not run.
 - `qwen3-8b-local` stays as a smaller-memory option.
 
