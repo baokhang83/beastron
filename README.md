@@ -8,7 +8,7 @@
 <h3>How close can a free, local coding agent get to a hosted one on real work?</h3>
 
 <p>
-Beastron is an <b>experimental</b> coding agent for local open-weight models, built to answer that question. It runs entirely on your own machine: no subscription, no per-token cost, and no code sent anywhere. It works with any OpenAI-compatible model server (Ollama, LM Studio, llama.cpp, vLLM). It is also a measurement project. Beastron is compared with Claude Code on the same tasks, drawn from real development work, and the gap is closed one measured change at a time. The target is to complete at least 80% as many of those tasks as Claude Code does. The full plan, the process and the roadmap are in <a href="https://github.com/baokhang83/beastron/blob/main/docs/plan.md">docs/plan.md</a>.
+Beastron is an <b>experimental</b> coding agent that runs entirely on your own machine (no subscription, no per-token cost, no code sent anywhere) and a <b>measurement project</b> that answers that question with numbers. It works with any OpenAI-compatible model server, such as Ollama or LM Studio.
 </p>
 
 <a href="https://github.com/baokhang83/mnemo-warmup/actions/workflows/build.yml"><img alt="build" src="https://github.com/baokhang83/mnemo-warmup/actions/workflows/build.yml/badge.svg"></a>
@@ -17,18 +17,41 @@ Beastron is an <b>experimental</b> coding agent for local open-weight models, bu
 
 </div>
 
-## Status: early, and honest about it
+## The goal
 
-Beastron handles small, clearly defined tasks. It is **not yet reliable for multi-step changes**. Observations so far, made by hand with `qwen3:8b` on the reference machine (the automated scoreboard doesn't exist yet):
+**Complete at least 80% as many tasks as Claude Code** (with a pinned `claude-sonnet-5-5`), on a suite of tasks drawn from real work and weighted by how often that kind of task actually comes up, on a modern baseline developer machine (reference: Apple M5, 24 GB). Every claim in this README is a measured result or is marked as unmeasured.
 
-- **Fixing an off-by-one bug** in a small Python project, with tests: correct in 3 of 3 runs with thinking off (about 35 s each), and 1 of 1 with thinking on (181 s).
-- **Summarizing what a project is about:** wrong before beastron read the project's docs itself; correct since then, in one step.
-- **Removing a recently added feature** while keeping an unrelated change: none of 3 runs fully correct, each wrong in a different way. beastron's own record of changed files was accurate every time.
-- **Answering a question:** the model sometimes tries to edit files instead of answering. You can refuse, and beastron then stops instead of letting it retry.
+## Where we stand
 
-Details in [docs/plan.md § Current status](docs/plan.md#7-current-status-and-known-limits).
+| | usage-weighted score | tasks passed | median task time |
+|---|---:|---:|---:|
+| Claude Code 2.1.328, `claude-sonnet-5-5` (3 repeats) | 100% | 171 / 171 | 14 s |
+| **beastron + `qwen3.5:9b`** (latest full run) | **72.2%** | 42 / 57 | 57 s |
+| beastron + `qwen3.5:9b` (first run) | 66.5% | 39 / 57 | 53 s |
+| beastron + `qwen3:8b`, thinking on | 40% | 22 / 57 | 257 s |
+| **Target** | **80%** | | |
 
-**Reference machine:** Apple M5, 24 GB unified memory. `qwen3:8b` generates about 20–26 tokens/s there and uses about 9.4 GB with a 32K context. Nothing has been measured on other machines yet.
+Claude Code passed every run, so it sits at the ceiling and **beastron's score is also its share of the reference**: about 72%, about 8 points short.
+
+**How far to trust that.** One repeat per task, so one-task changes are noise; a 95% range on the plain pass rate is about 61% to 83%, which still includes 80%. The latest full run was measured before the most recent harness changes (guard, reminder, empty-reply nudge), which have been tested on targeted tasks but not yet re-measured on the whole suite. The suite is 70% Java, and 18 of its 57 tasks replay commits from a handful of public repositories (with 8 more questions about them), so it measures those more than Java in general. The reference machine is the only one measured.
+
+**Where the missing points are:** almost all in the **long Java tasks** (the "feature" category: 4 of 13 passed, 18 weighted points missing). Short tasks (build, config, refactor, remove, tests, git) are at or near 100%.
+
+## How it is measured
+
+- **A 57-task suite** ([evals/README.md](evals/README.md)): synthetic tasks for known failure types, 18 replays of real commits from public Apache-2.0 repositories (no copied code, only the URL and commit hash), and questions about those repositories. Each task has automatic checks (tests, file scope, answer content).
+- **Usage weights:** each category counts as much as that kind of work occurs in real use ([evals/usecases.md](evals/usecases.md)): explain 29%, feature 24%, git 16%, fix 10%, docs 10%, build 6%, other 5%.
+- **A sandboxed runner:** every action is approved automatically, so shell commands run in a macOS sandbox that only allows writes in the run's own folder.
+- **A Claude Code reference runner** (`beastron eval reference`): the same tasks, workspaces and checks, with Claude Code in safe mode and a pinned model. Only summaries are stored, never transcripts.
+- **Baselines and regression detection:** summaries are committed to `evals/results/`; `beastron eval report` compares a run with the stored baseline and flags real regressions, a changed model file, or a changed Claude Code version.
+- **Traces:** every run records each step, tool call, token count and timing, so failures can be read, not guessed at.
+
+## What we have learned
+
+- **Worked and measured:** read-only tools for questions (no more edits when asked a question; 25 of 25 on the question tasks with the other fixes); an empty-reply nudge (git tasks 3/10 to 9/10); a reminder to finish an unfinished merge or cherry-pick (merge task 5/5 against 2/5); typed git commands understood by the git tool (tool errors 31 to 6); a guard against git commands that discard the task's changes (a `git stash` once destroyed a solved run).
+- **Tried and not supported by the data:** a per-step output cap (no step in the long runs exceeded it), close-match edits (2 of 16 failures fixable), longer step limits, build-log summaries, "read the named test first" (44 of 45 runs already did). An experimental advisor-model branch is not merged.
+- **Thinking off** (`qwen3.5:9b`) is inconclusive: 4 of 9 long tasks against 3 of 9 with thinking on, fewer tokens but more steps.
+- **The long tasks look capability-limited, not plumbing-limited:** the model loops through compile errors and misread tests. The next step is to measure a stronger model on those tasks, and then whether the harness can switch to it when it detects a difficult task.
 
 ## What it does today
 
@@ -41,34 +64,22 @@ Details in [docs/plan.md § Current status](docs/plan.md#7-current-status-and-kn
   | `write_file`, `edit_file`, `delete_file` | yes, after showing a diff |
   | `run_shell` | yes, after showing the command |
 
-- **Safety:** file tools can't reach outside the project folder or write inside `.git/`. The read-only `git` tool can't be talked into writing files or running programs. Shell commands run with your user's permissions, so read each one before approving it.
-
-  A guard blocks common Git discard commands when they would discard changes made
-  during the task. It is not a security boundary and does not cover `git branch -D`.
-  Uncommitted work already present at the start of the task is not protected:
-  in one evaluation, a checkout restoring a pre-staged test to `HEAD` was allowed.
-- **A change record:** after each task, beastron lists the files *its tools* changed (`A`/`M`/`D` with line counts). This comes from the tools, not from the model's summary, which can be wrong.
-- **A project briefing:** when a session starts, beastron reads the project's documentation (`AGENTS.md`, else `README.md`, plus linked docs) and gives it to the model.
-- **Guardrails for small models:**
-  - When a model announces a step but doesn't take it, beastron nudges it to continue.
-  - Saying "no" to an action ends the turn.
-  - A failed edit shows the model the closest matching text from the file.
-  - Invalid tool calls go back to the model as errors instead of crashing.
-  - A task stops after 25 model calls.
-- **Session traces:** every session is recorded in `~/.local/state/beastron/sessions/` as one JSONL file: what you asked, each tool call with its full output, the change record, tokens and timing, the exact model file (its digest) and the project's git state at the start. Traces stay on your machine; `--no-trace` turns them off.
+- **Questions get read-only tools.** A request that only asks something gets the reading tools, so editing is impossible. `/do REQUEST` runs a request with every tool.
+- **Safety:** file tools can't reach outside the project or write inside `.git/`. Shell commands run with your permissions, so read each one before approving. A guard blocks common Git discard commands (`stash`, `reset --hard`, `restore`, `clean`, `checkout --`) when they would discard changes made during the task. It is **not a security boundary**, does not cover `git branch -D`, and does not protect uncommitted work already present at the start of the task.
+- **Guardrails for small models:** a nudge when the model announces a step without taking it, when its reply is empty (including when the answer was only in its reasoning), and when a merge, cherry-pick or rebase is still unfinished at the end of the turn; invalid tool calls go back as errors; a failed edit shows the closest matching text; saying "no" ends the turn; a task stops after 25 model calls.
+- **A change record** from the tools themselves, not from the model's summary, which can be wrong.
+- **A project briefing:** at session start beastron reads the project's documentation (`AGENTS.md`, else `README.md`, plus linked docs).
+- **Session traces** in `~/.local/state/beastron/sessions/`: what you asked, each tool call with its output, tokens, timing and the exact model file.
 - **Any model:** profiles in `models.toml`; switch with `-m` or `/model` during a session.
-
-The eval harness and a 57-task suite drawn from real work exist ([evals/README.md](evals/README.md)); the first score against Claude Code doesn't yet. Not there yet, and planned: that score, undo, summarizing long conversations, automatic test runs, adapting the tools to the model's strength. See the [roadmap](docs/plan.md#6-roadmap).
 
 ## Setup
 
 ```bash
 # 1. Model server (Ollama). On Apple M5 Macs the tensor setting is required for now.
 GGML_METAL_TENSOR_DISABLE=1 OLLAMA_CONTEXT_LENGTH=32768 ollama serve
-ollama pull qwen3:8b
+ollama pull qwen3.5:9b          # the default profile; uses about 15-18 GB at a 32K context
 
 # 2. Install beastron as a command you can run from any folder.
-#    --editable: changes to the code here apply immediately, no reinstall needed.
 uv tool install --editable ~/Documents/beastron
 
 # 3. Make models.toml available from any folder (a link, so there's still one file to edit).
@@ -76,87 +87,58 @@ mkdir -p ~/.config/beastron
 ln -s ~/Documents/beastron/models.toml ~/.config/beastron/models.toml
 ```
 
-uv puts the `beastron` command in `~/.local/bin`. If your shell can't find it,
-run `uv tool update-shell` and open a new terminal.
-
-After changing beastron's dependencies in `pyproject.toml`, reinstall once with
-`uv tool install --editable --force ~/Documents/beastron`. Code changes need nothing.
+uv puts the `beastron` command in `~/.local/bin`. If your shell can't find it, run `uv tool update-shell` and open a new terminal.
 
 ## Usage
 
-Run beastron from the folder of the project you want it to work on. That folder
-is the only place its file tools can read and write.
+Run beastron from the folder of the project you want it to work on. That folder is the only place its file tools can read and write.
 
 ```bash
 cd ~/Documents/my-project
 beastron                                  # interactive session
 beastron "fix the failing test"           # one task, then exit
-beastron -m qwen3-8b-fast                 # pick a model profile
+beastron -m qwen3-8b-local                # pick a model profile
 beastron -v                               # show reasoning and full tool output
 beastron --no-trace                       # don't record the session
-beastron eval --help                      # eval commands (being built: see the M0 milestone)
 ```
 
-Use `beastron`, not `uv run beastron`: inside another project, `uv run` sets up that
-project's environment and won't find beastron.
+Commands inside a session: `/help`, `/models`, `/model NAME`, `/do REQUEST`, `/clear`, `/context`, `/verbose`, `/quit`. Ctrl-C stops the agent; Ctrl-D quits.
 
-Beastron looks for `models.toml` in this order: the `--config` option, the
-`BEASTRON_CONFIG` environment variable, the current folder, then
-`~/.config/beastron/models.toml`.
+**Measuring** (details in [evals/README.md](evals/README.md)):
 
-Commands inside a session: `/help`, `/models`, `/model NAME`, `/clear`,
-`/context`, `/verbose`, `/quit`. Ctrl-C stops the agent; Ctrl-D quits.
-
-### Project briefing
-
-When a session starts (and after `/clear`), beastron reads the project's
-documentation and gives it to the model, so the model knows what the project
-is before its first step:
-
-1. It starts from `AGENTS.md`, else `README.md`, else the most likely looking
-   other `.md` file.
-2. It reads that file fully, then the Markdown files it links to, two levels
-   deep. Informative names (overview, architecture, manifesto, ...) go first;
-   files like CHANGELOG, LICENSE or CODE_OF_CONDUCT are skipped.
-3. It stops at about 20% of the model's context. Linked files that didn't fit
-   are listed by name for the model.
-
-The header shows what was read:
-`briefing: README.md, MANIFESTO.md, CONTRIBUTING.md · 6.5K tokens`. The first
-answer takes longer to start because the model reads the briefing first.
-`--no-briefing` turns it off.
+```bash
+beastron eval run -s quick -n 1           # the quick suite, one repeat
+beastron eval run -t TASK -n 5            # one task, five repeats
+beastron eval report                      # latest run, compared with the baseline
+beastron eval baseline                    # store the latest run as the baseline
+beastron eval verify                      # every task fails as given and passes with its solution (no model)
+beastron eval reference                   # Claude Code on the same tasks (a real session on your account)
+```
 
 ## Models
 
-Profiles live in `models.toml`. Each one is a server URL, a model name and a
-context size, plus optional settings:
+Profiles live in `models.toml`: a server URL, a model name and a context size, plus optional settings (`effort` to turn thinking off, `temperature`, `quirks` such as `send_reasoning_back` for gpt-oss, `api_key_env` for hosted providers). The default is `qwen35-9b`. Other models were compared in [docs/model-comparison.md](docs/model-comparison.md): `qwen3:8b` scored 40%, and Devstral Small 2 did not beat `qwen3.5:9b` and only fits the GPU at a 16K context. Hosted services can be used through `api_key_env`, but that sends your code to the provider, which goes against the point of the project; it is meant for benchmarking.
 
-| Setting | Purpose |
-|---|---|
-| `effort` | How hard the model thinks; `"none"` turns thinking off (much faster on Qwen3, weaker on hard tasks). Sent to the server as `reasoning_effort`. |
-| `api_key_env` | Environment variable that holds the API key, for hosted providers |
-| `temperature` | Sampling temperature |
-| `quirks` | Per-model fixes, e.g. `["send_reasoning_back"]` for gpt-oss |
-| `extra_body` | Extra server-specific request fields |
+## Roadmap
 
-Beastron can also talk to hosted OpenAI-compatible services (for example OpenRouter) through `api_key_env`. That sends your code to the provider, which goes against the point of the project. It's meant for benchmarking only.
+Milestones M0 (scoreboard), M1 (real usage and tasks) and M2 (reference and model choice) are done. **M3, reliability and tiers, is in progress:** read-only questions and the git fixes are in; next is measuring a stronger model on the long tasks and, if it helps, switching to it automatically (issue #32). M4 (feedback from daily use) and M5 (regression discipline) are planned. See the [issues](https://github.com/baokhang83/beastron/issues) and [docs/plan.md](docs/plan.md).
 
 ## Layout
 
 ```
 src/beastron/
-  cli.py        entry point, prompt, slash commands
-  ui.py         Rich display (listens to agent events)
-  agent.py      the loop: model -> tools -> model, until done
-  events.py     what the agent reports while it works, including the change record
-  briefing.py   reads the project's docs at session start
-  client.py     OpenAI-compatible model client
-  quirks.py     fixes for model-specific behavior
-  config.py     models.toml loading
-  tools/        file tools, read-only git, shell, sandbox
-tests/          uv run pytest
-docs/plan.md    goal, process, architecture, roadmap
-docs/refitting.md  refitting the eval suite to your work
+  cli.py            entry point, prompt, slash commands
+  agent.py          the loop: model -> tools -> model, until done
+  policy.py         which tools a request gets (questions are read-only)
+  discard_guard.py  blocks git commands that would discard the task's changes
+  observability.py  passive counters recorded in traces
+  tools/            file tools, read-only git, shell, sandbox
+  evals/            task suite runner, checks, reports, Claude Code reference runner
+  usecases/         reads real sessions to weight the suite
+  ui.py events.py briefing.py client.py quirks.py config.py trace.py
+evals/              the 57 tasks, usage weights, committed result summaries and baselines
+docs/               plan.md, model-comparison.md, m2-gap-report.md, refitting.md
+tests/              uv run pytest
 ```
 
 ## License
