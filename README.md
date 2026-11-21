@@ -42,6 +42,11 @@ Details in [docs/plan.md § Current status](docs/plan.md#7-current-status-and-kn
   | `run_shell` | yes, after showing the command |
 
 - **Safety:** file tools can't reach outside the project folder or write inside `.git/`. The read-only `git` tool can't be talked into writing files or running programs. Shell commands run with your user's permissions, so read each one before approving it.
+
+  A guard blocks common Git discard commands when they would discard changes made
+  during the task. It is not a security boundary and does not cover `git branch -D`.
+  Uncommitted work already present at the start of the task is not protected:
+  in one evaluation, a checkout restoring a pre-staged test to `HEAD` was allowed.
 - **A change record:** after each task, beastron lists the files *its tools* changed (`A`/`M`/`D` with line counts). This comes from the tools, not from the model's summary, which can be wrong.
 - **A project briefing:** when a session starts, beastron reads the project's documentation (`AGENTS.md`, else `README.md`, plus linked docs) and gives it to the model.
 - **Guardrails for small models:**

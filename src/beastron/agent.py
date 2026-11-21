@@ -5,20 +5,28 @@ from __future__ import annotations
 import json
 import platform
 import re
+import subprocess
 import time
 from collections.abc import Callable
 from datetime import date
+from pathlib import Path
 
 from .briefing import Briefing, budget_for, build_briefing
 from .client import Message, ModelClient, ModelError
+from .discard_guard import DiscardGuard
+from .observability import Observer
 from .events import (
     ApprovalRequest,
     ContextUpdate,
+    DiscardAttempt,
     ErrorEvent,
     Event,
     FileChange,
     ModelEnd,
     ModelStart,
+    StepObservation,
+    ToolObservation,
+    NumericTestClaims,
     Nudge,
     ReasoningDelta,
     TextDelta,
@@ -59,6 +67,40 @@ EMPTY_REPLY_MESSAGE = (
     "[beastron] Your last reply was empty: your answer was only in your reasoning, which the user does not see. "
     "Write your final answer now as a normal reply."
 )
+COMPLETELY_EMPTY_REPLY_MESSAGE = (
+    "[beastron] Your last reply was empty. If there is more to do, call a tool now. "
+    "If the task is complete, reply with your final summary."
+)
+
+
+def unfinished_git_operation(root: Path) -> str | None:
+    """Find in-progress Git operations, including in linked worktrees."""
+    try:
+        result = subprocess.run(
+            ['git', 'rev-parse', '--git-dir'], cwd=root, capture_output=True,
+            text=True, timeout=5, stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode or not result.stdout.strip():
+        return None
+    gitdir = Path(result.stdout.strip())
+    if not gitdir.is_absolute():
+        gitdir = root / gitdir
+    if (gitdir / 'rebase-merge').is_dir() or (gitdir / 'rebase-apply').is_dir():
+        return 'rebase'
+    if (gitdir / 'CHERRY_PICK_HEAD').is_file():
+        return 'cherry-pick'
+    if (gitdir / 'MERGE_HEAD').is_file():
+        return 'merge'
+    return None
+
+
+def unfinished_git_message(operation: str) -> str:
+    action = {'merge': 'git commit', 'cherry-pick': 'git cherry-pick --continue',
+              'rebase': 'git rebase --continue'}[operation]
+    return (f"A {operation} is still in progress. If the conflicts are resolved, use run_shell to stage "
+            f"the resolved files with git add, then finish with {action}. If you can't, say so.")
 
 
 def announces_unfinished_action(text: str) -> bool:
@@ -164,11 +206,14 @@ class Agent:
         prompt_tokens = completion_tokens = 0
         step = 0
         nudges = 0
+        git_reminded = False
         self.emit(TurnStart(task, mode))
         self.messages.append({"role": "user", "content": task + ("\n\n" + QUESTION_HINT if mode == QUESTION else "")})
         schemas = [t.schema() for t in self.tools.values() if self._allowed is None or t.name in self._allowed]
         self._changes: dict[str, FileChange] = {}
         self._shell_commands = 0
+        self._discard_guard = DiscardGuard(self.workspace.root)
+        self._observer = Observer()
 
         def finish(reason: TurnEndReason) -> TurnEndReason:
             self.emit(
@@ -192,22 +237,37 @@ class Agent:
                 model_seconds += time.monotonic() - t0
                 self.emit(ModelEnd(step))
 
+                self.emit(StepObservation(step, reply.prompt_tokens, reply.completion_tokens,
+                                          len(reply.content), reply.reasoning_in_reply_chars))
+
                 prompt_tokens += reply.prompt_tokens or 0
                 completion_tokens += reply.completion_tokens or 0
                 self.messages.append(self.client.assistant_message(reply))
                 self._update_context(reply.prompt_tokens, reply.completion_tokens)
 
                 if not reply.tool_calls:
-                    if nudges < MAX_NUDGES and not reply.content.strip() and reply.reasoning.strip():
+                    if nudges < MAX_NUDGES and not reply.content.strip():
                         nudges += 1
-                        self.emit(Nudge("the reply was empty: the answer was only in the reasoning"))
-                        self.messages.append({"role": "user", "content": EMPTY_REPLY_MESSAGE})
+                        if reply.reasoning.strip():
+                            self.emit(Nudge("the reply was empty: the answer was only in the reasoning"))
+                            message = EMPTY_REPLY_MESSAGE
+                        else:
+                            self.emit(Nudge("the reply was completely empty"))
+                            message = COMPLETELY_EMPTY_REPLY_MESSAGE
+                        self.messages.append({"role": "user", "content": message})
                         continue
                     if nudges < MAX_NUDGES and announces_unfinished_action(reply.content):
                         nudges += 1
                         self.emit(Nudge("the model announced a step without taking it"))
                         self.messages.append({"role": "user", "content": NUDGE_MESSAGE})
                         continue
+                    operation = unfinished_git_operation(self.workspace.root) if not git_reminded else None
+                    if operation:
+                        git_reminded = True
+                        self.emit(Nudge(f"a {operation} is still in progress"))
+                        self.messages.append({"role": "user", "content": unfinished_git_message(operation)})
+                        continue
+                    self.emit(NumericTestClaims(self._observer.unsupported_test_counts(reply.content)))
                     return finish("done")
                 # A denial ends the turn: the user said no, so control goes back
                 # to them instead of letting the model try again on its own.
@@ -230,6 +290,7 @@ class Agent:
 
     def _execute(self, call: ToolCall) -> tuple[str, bool]:
         """Run one tool call. Returns (output for the model, whether the user denied it)."""
+        tool_started = time.monotonic()
         tool = self.tools.get(call.name)
         if tool and self._allowed is not None and call.name not in self._allowed:
             return NOT_AVAILABLE, False
@@ -251,12 +312,28 @@ class Agent:
             )
         elif parse_error:
             result = ToolResult(parse_error, "invalid arguments", ok=False)
+        elif call.name == "run_shell" and isinstance(args.get("command"), str):
+            decisions = self._discard_guard.check(args["command"])
+            for attempt, blocked, reason in decisions:
+                self.emit(DiscardAttempt(call.id, attempt.action, blocked, reason))
+            if any(blocked for _, blocked, _ in decisions):
+                result = ToolResult(
+                    "Blocked: this Git command could discard changes made during this task. "
+                    "Use the read-only git tool to inspect the repository.",
+                    "blocked Git discard", ok=False,
+                )
+            else:
+                result = self._run_tool(tool, args)
         else:
             result = self._run_tool(tool, args)
 
         if result.change:
             merge_change(self._changes, result.change)
         self.emit(ToolEnd(call.id, call.name, result.ok, result.summary, result.output))
+        short, overlap = self._observer.tool_result(call.name, args if isinstance(args, dict) else {},
+                                                    result.output, result.summary, result.ok)
+        self.emit(ToolObservation(call.id, call.name, time.monotonic() - tool_started, short, overlap,
+                                  bool(call.name == 'write_file' and result.change and result.change.kind == 'modified')))
         output = result.output
         if len(output) > MAX_TOOL_OUTPUT:
             output = output[:MAX_TOOL_OUTPUT] + f"\n[... output cut at {MAX_TOOL_OUTPUT} characters]"

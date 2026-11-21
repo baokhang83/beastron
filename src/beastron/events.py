@@ -57,6 +57,38 @@ class ToolEnd:
 
 
 @dataclass(frozen=True)
+class DiscardAttempt:
+    call_id: str
+    action: str
+    blocked: bool
+    reason: str
+
+
+@dataclass(frozen=True)
+class StepObservation:
+    step: int
+    prompt_tokens: int | None
+    completion_tokens: int | None
+    reply_text_chars: int
+    reasoning_in_reply_chars: int
+
+
+@dataclass(frozen=True)
+class ToolObservation:
+    call_id: str
+    name: str
+    elapsed: float
+    short_read: bool = False
+    overlapping_read: bool = False
+    whole_file_rewrite: bool = False
+
+
+@dataclass(frozen=True)
+class NumericTestClaims:
+    unsupported_count: int
+
+
+@dataclass(frozen=True)
 class Nudge:
     """The model announced an action without doing it; the agent asked it to continue."""
 
@@ -110,6 +142,10 @@ Event = (
     | ModelEnd
     | ToolStart
     | ToolEnd
+    | DiscardAttempt
+    | StepObservation
+    | ToolObservation
+    | NumericTestClaims
     | Nudge
     | ContextUpdate
     | ErrorEvent

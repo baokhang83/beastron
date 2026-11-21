@@ -85,6 +85,12 @@ def _clip(text: str) -> str:
 # anything else is refused, since this tool runs without approval (see the module docstring).
 _TYPED_FLAGS_IGNORED = {"--oneline", "--stat", "--patch", "-p", "--no-color", "--no-pager", "--no-ext-diff", "--no-textconv"}
 _SUBCOMMANDS = ("status", "diff", "log", "show")
+def _unknown_command(text: str) -> ToolError:
+    return ToolError(
+        f"Unknown git command {text!r}. The git tool is read-only; use status, diff, log or show. "
+        "To change the repository, use run_shell. "
+        "For example, call run_shell with command='git add path/to/file'."
+    )
 
 
 def parse_typed_command(ws: Workspace, text: str, args: Args) -> Args:
@@ -98,7 +104,7 @@ def parse_typed_command(ws: Workspace, text: str, args: Args) -> Args:
     if tokens and tokens[0] == "git":
         tokens = tokens[1:]
     if not tokens or tokens[0] not in _SUBCOMMANDS:
-        raise ToolError(f"Unknown git command {text!r}. Use status, diff, log or show.")
+        raise _unknown_command(text)
     command, rest = tokens[0], tokens[1:]
     refs: list[str] = []
     path = args.get("path")
@@ -211,7 +217,7 @@ def make_git_tool(ws: Workspace) -> Tool:
             proc = run_git(ws, ["show", "--no-ext-diff", "--no-textconv", "--stat", "--patch", ref or "HEAD", *paths])
             return ToolResult(_clip(proc.stdout.strip()), f"commit {ref or 'HEAD'}")
 
-        raise ToolError(f"Unknown git command {command!r}. Use status, diff, log or show.")
+        raise _unknown_command(command)
 
     return Tool(
         "git",

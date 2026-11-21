@@ -33,6 +33,7 @@ class ModelReply:
     tool_calls: list[ToolCall] = field(default_factory=list)
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
+    reasoning_in_reply_chars: int = 0
 
 
 class ModelClient(Protocol):
@@ -95,6 +96,7 @@ class OpenAICompatClient:
                     text.append(piece)
                     on_text(piece)
                 elif channel == "think":
+                    reply.reasoning_in_reply_chars += len(piece)
                     reasoning.append(piece)
                     on_reasoning(piece)
                 else:

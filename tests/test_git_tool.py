@@ -180,3 +180,14 @@ def test_typed_commands_cannot_do_more_than_the_tool_does(repo, tool, typed):
 def test_an_unknown_typed_subcommand_names_the_allowed_ones(tool):
     with pytest.raises(ToolError, match="status, diff, log or show"):
         run(tool, command="checkout main")
+
+
+@pytest.mark.parametrize('typed', ['commit', 'add', 'checkout main', 'git commit -m "merge"', 'git add pricing.py'])
+def test_write_commands_explain_read_only_and_shell(tool, repo, typed):
+    before = git(repo, 'status', '--porcelain').stdout
+    with pytest.raises(ToolError) as exc:
+        run(tool, command=typed)
+    msg = str(exc.value)
+    assert 'read-only' in msg
+    assert 'run_shell' in msg and 'git add' in msg
+    assert git(repo, 'status', '--porcelain').stdout == before
