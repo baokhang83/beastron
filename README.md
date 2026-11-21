@@ -11,7 +11,7 @@
 Beastron is an <b>experimental</b> coding agent that runs entirely on your own machine (no subscription, no per-token cost, no code sent anywhere) and a <b>measurement project</b> that answers that question with numbers. It works with any OpenAI-compatible model server, such as Ollama or LM Studio.
 </p>
 
-<a href="https://github.com/baokhang83/mnemo-warmup/actions/workflows/build.yml"><img alt="build" src="https://github.com/baokhang83/mnemo-warmup/actions/workflows/build.yml/badge.svg"></a>
+<a href="https://github.com/baokhang83/beastron/actions/workflows/ci.yml"><img alt="build" src="https://github.com/baokhang83/beastron/actions/workflows/ci.yml/badge.svg"></a>
 <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
 <img alt="Status: alpha" src="https://img.shields.io/badge/status-alpha-yellow">
 
