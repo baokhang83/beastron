@@ -7,6 +7,7 @@ Everything model-specific lives here, so the agent loop never needs
 from __future__ import annotations
 
 import json
+import uuid
 from dataclasses import dataclass
 
 
@@ -134,3 +135,53 @@ def safe_arguments(arguments: str) -> str:
         return arguments or "{}"
     except json.JSONDecodeError:
         return "{}"
+
+
+def recover_function_markup(text: str, tools: list[dict]) -> tuple[str, ToolCall] | None:
+    """Recover one unambiguous function block, or leave malformed text untouched.
+
+    The caller must opt in. The available tool schemas constrain names and
+    parameters; normal agent validation and approvals still apply afterwards.
+    """
+    import re
+
+    match = re.search(r'(?m)^\s*<function=([A-Za-z_][A-Za-z0-9_]*)>', text)
+    if not match or text[:match.start()].count('```') % 2:
+        return None
+    prefix = text[:match.start()].strip()
+    tail = text[match.end():]
+    end = re.fullmatch(r'(.*?)</function>\s*</tool_call>\s*', tail, re.DOTALL)
+    if not end:
+        return None
+    name = match.group(1)
+    schemas = [t.get('function', {}) for t in tools if t.get('type') == 'function']
+    schema = next((f for f in schemas if f.get('name') == name), None)
+    if schema is None:
+        return None
+    params = schema.get('parameters', {})
+    properties = params.get('properties', {})
+    remaining = end.group(1).strip()
+    args = {}
+    while remaining:
+        part = re.match(r'<parameter=([A-Za-z_][A-Za-z0-9_]*)>(.*?)</parameter>\s*', remaining, re.DOTALL)
+        if not part:
+            return None
+        key, value = part.groups()
+        if key not in properties or key in args or '<function=' in value or '<parameter=' in value:
+            return None
+        value = value.removeprefix('\n').removesuffix('\n')
+        kind = properties[key].get('type')
+        if kind != 'string':
+            try:
+                value = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                return None
+            expected = {'integer': int, 'number': (int, float), 'boolean': bool,
+                        'array': list, 'object': dict}.get(kind)
+            if expected is None or not isinstance(value, expected) or (kind in ('integer', 'number') and isinstance(value, bool)):
+                return None
+        args[key] = value
+        remaining = remaining[part.end():]
+    if any(key not in args for key in params.get('required', [])):
+        return None
+    return prefix, ToolCall(f'recovered_{uuid.uuid4().hex}', name, json.dumps(args))

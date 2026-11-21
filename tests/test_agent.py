@@ -134,7 +134,7 @@ def test_announced_but_not_taken_action_gets_a_nudge(tmp_path):
 def test_nudges_are_limited(tmp_path):
     replies = [ModelReply(content="Let me look at it.") for _ in range(5)]
     agent, client, _ = make_agent(tmp_path, replies)
-    assert agent.run("go") == "done"
+    assert agent.run("go") == "incomplete"
     assert len(client.seen) == 3  # the first reply plus two nudges
 
 
@@ -271,7 +271,7 @@ def test_raw_tool_markup_is_nudged_then_tool_can_run(tmp_path):
 def test_raw_markup_shares_existing_two_nudge_limit(tmp_path):
     agent, client, _ = make_agent(tmp_path, [ModelReply(content=''), ModelReply(content='</tool_call>'),
                                               ModelReply(content='<tool_call>')])
-    assert agent.run('go') == 'done'
+    assert agent.run('go') == 'incomplete'
     assert len(client.seen) == 3
 
 
@@ -298,5 +298,48 @@ def test_agent_uses_current_profile_step_limit_unless_explicitly_overridden(tmp_
 def test_raw_markup_is_nudged_only_once_per_turn(tmp_path):
     agent, client, _ = make_agent(tmp_path, [ModelReply(content='<tool_call>'),
                                               ModelReply(content='<function=read_file>')])
-    assert agent.run('go') == 'done'
+    assert agent.run('go') == 'incomplete'
     assert len(client.seen) == 2
+
+
+def test_system_prompt_reports_non_git_workspace_and_refreshes(tmp_path):
+    import subprocess
+    agent, _, _ = make_agent(tmp_path, [])
+    assert 'not a Git repository' in agent.messages[0]['content']
+    subprocess.run(['git', 'init', '-q', str(tmp_path)], check=True)
+    agent.reset()
+    assert 'is a Git repository' in agent.messages[0]['content']
+    assert 'not a Git repository' not in agent.messages[0]['content']
+
+
+def test_git_status_unknown_does_not_claim_not_a_repository(tmp_path, monkeypatch):
+    from beastron.tools.base import ToolError
+    def unavailable(*args, **kwargs):
+        raise ToolError('git is not installed')
+    monkeypatch.setattr('beastron.agent.run_git', unavailable)
+    agent, _, _ = make_agent(tmp_path, [])
+    assert 'Git repository status is unknown' in agent.messages[0]['content']
+    assert 'not a Git repository' not in agent.messages[0]['content']
+
+
+def test_git_context_refreshes_between_turns(tmp_path):
+    import subprocess
+    agent, client, _ = make_agent(tmp_path, [ModelReply(content='done')])
+    assert 'not a Git repository' in agent.messages[0]['content']
+    subprocess.run(['git', 'init', '-q', str(tmp_path)], check=True)
+    agent.run('go')
+    assert 'is a Git repository' in client.seen[0][0]['content']
+
+
+def test_unexecuted_malformed_calls_are_incomplete_after_nudges(tmp_path):
+    replies = [ModelReply(content="I'll check it.\n<function=read_file></function></tool_call>") for _ in range(3)]
+    agent, client, events = make_agent(tmp_path, replies)
+    assert agent.run('read it') == 'incomplete'
+    assert len(client.seen) == 3
+    assert events[-1].reason == 'incomplete'
+
+
+def test_repeated_announced_actions_are_incomplete_after_nudges(tmp_path):
+    agent, client, _ = make_agent(tmp_path, [ModelReply(content='Let me check it.') for _ in range(3)])
+    assert agent.run('go') == 'incomplete'
+    assert len(client.seen) == 3

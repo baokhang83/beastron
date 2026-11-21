@@ -7,13 +7,15 @@ from typing import Annotated
 
 import typer
 from typer.core import TyperGroup
-from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion
 from prompt_toolkit.formatted_text import HTML
-from prompt_toolkit.history import FileHistory
+from rich.text import Text
+from prompt_toolkit.key_binding import KeyBindings
 
+from .input_area import InputArea
 from .agent import Agent
 from .policy import WORK
+from .permissions import PermissionMode
 from .client import OpenAICompatClient
 from .config import Config, ConfigError, load_config
 from .evals.commands import eval_app
@@ -25,6 +27,7 @@ from .ui import RichUI, fmt_tokens
 COMMANDS = {
     "/help": "show this help",
     "/models": "list the model profiles in models.toml",
+    "/mode": "show or change permission mode: /mode auto|ask",
     "/model": "switch model: /model NAME",
     "/do": "run a request with all tools, even if it reads like a question: /do REQUEST",
     "/clear": "start a fresh conversation",
@@ -79,6 +82,8 @@ def main(
     model: Annotated[str | None, typer.Option("--model", "-m", help="Model profile from models.toml.")] = None,
     config: Annotated[Path | None, typer.Option("--config", "-c", help="Path to models.toml.")] = None,
     max_steps: Annotated[int | None, typer.Option(min=1, help="Maximum model calls per task (overrides the profile).")] = None,
+    mode: Annotated[PermissionMode, typer.Option("--mode", help="Permission mode: auto or ask.")] = PermissionMode.AUTO,
+    ask: Annotated[bool, typer.Option("--ask", "--no-auto", help="Ask before file changes and shell commands.")] = False,
     verbose: Annotated[bool, typer.Option("--verbose", "-v", help="Show reasoning and full tool output.")] = False,
     briefing: Annotated[
         bool, typer.Option("--briefing/--no-briefing", help="Read the project's docs (AGENTS.md, README.md, ...) at startup.")
@@ -88,7 +93,7 @@ def main(
     ] = True,
 ) -> None:
     """Interactive session, or one task (the default: `beastron` and `beastron "task"` run this)."""
-    ui = RichUI(verbose=verbose)
+    ui = RichUI(verbose=verbose, mode=PermissionMode.ASK if ask else mode)
     try:
         cfg = load_config(config)
         profile = cfg.get(model)
@@ -105,6 +110,7 @@ def main(
     )
     if session:
         session.note("briefing", files=[f.path for f in agent.briefing.files], chars=agent.briefing.chars)
+        session.note("permission_mode", mode=ui.mode.value)
     ui.header(profile, ws.root, agent.briefing if briefing else None)
 
     try:
@@ -118,22 +124,40 @@ def main(
             ui.info(f"session trace: {session.path}")
 
 
+def _mode_prompt(ui: RichUI) -> HTML:
+    return HTML(
+        f"<ansibrightyellow><b>[{ui.mode.value}]</b></ansibrightyellow> "
+        "<ansibrightblack>(shift+tab to toggle)</ansibrightblack>"
+    )
+
+
+def _mode_bindings(ui: RichUI, trace: SessionTrace | None = None) -> KeyBindings:
+    bindings = KeyBindings()
+
+    @bindings.add("s-tab")
+    def toggle_mode(event):
+        ui.mode = PermissionMode.ASK if ui.mode == PermissionMode.AUTO else PermissionMode.AUTO
+        if trace:
+            trace.note("permission_mode", mode=ui.mode.value)
+        event.app.invalidate()
+
+    return bindings
+
+
 def _repl(agent: Agent, ui: RichUI, cfg: Config, trace: SessionTrace | None = None) -> None:
     HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    session: PromptSession[str] = PromptSession(
-        history=FileHistory(str(HISTORY_FILE)),
-        completer=SlashCompleter(),
-        complete_while_typing=True,
-    )
+    area = InputArea(HISTORY_FILE, SlashCompleter(), indicator=lambda: _mode_prompt(ui),
+                     mode_bindings=_mode_bindings(ui, trace))
     while True:
         try:
-            line = session.prompt(HTML("<ansicyan><b>›</b></ansicyan> ")).strip()
+            line = area.read().strip()
         except KeyboardInterrupt:
             continue  # Ctrl-C at the prompt clears the line
         except EOFError:
             break
         if not line:
             continue
+        area.echo(ui.console, line)
         if line.lower() in ("exit", "quit", ":q"):  # people type these without the slash
             break
         if line.startswith("/"):
@@ -152,6 +176,16 @@ def _command(line: str, agent: Agent, ui: RichUI, cfg: Config, trace: SessionTra
     if cmd == "/help":
         for name, help_text in COMMANDS.items():
             ui.console.print(f"  [bold]{name:<10}[/] [dim]{help_text}[/]")
+    elif cmd == "/mode":
+        if arg:
+            try:
+                ui.mode = PermissionMode(arg)
+            except ValueError:
+                ui.info("use /mode auto or /mode ask")
+                return None
+            if trace:
+                trace.note("permission_mode", mode=ui.mode.value)
+        ui.console.print(Text(f"  [{ui.mode.value}] permission mode", style="bold bright_yellow"))
     elif cmd == "/models":
         for name, p in cfg.profiles.items():
             mark = "●" if name == agent.client.profile.name else " "

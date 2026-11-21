@@ -14,6 +14,8 @@ from pathlib import Path
 from .briefing import Briefing, budget_for, build_briefing
 from .client import Message, ModelClient, ModelError
 from .discard_guard import DiscardGuard
+from .tools.git import run_git
+from .tools.base import ToolError
 from .observability import Observer
 from .events import (
     ApprovalRequest,
@@ -134,7 +136,7 @@ How to work:
   Look at the code if that helps, but do not change any file unless the user asks you to make the change.
 - Explore before changing anything: use list_files and search_code to find the relevant code, then read_file.
 - When the request is about recent work ("my latest changes", "what I just added", "undo my last change"),
-  start with the git tool: status lists uncommitted changes and untracked (brand-new) files, diff shows the
+  if the project is a Git repository, start with the git tool: status lists uncommitted changes and untracked files, diff shows the
   changes, log and show show recent commits.
 - Always read a file before editing it. Use edit_file for changes to existing files; old_text must be copied exactly from the file.
 - Use write_file only to create new files or when replacing a whole file is clearly simpler. Use delete_file to remove a file.
@@ -149,6 +151,20 @@ How to work:
 
 Environment: {os}, today is {today}.
 """
+
+def git_workspace_context(workspace: Workspace) -> str:
+    """Describe Git availability without treating command errors as a non-repository."""
+    try:
+        result = run_git(workspace, ["rev-parse", "--is-inside-work-tree"], check=False)
+    except (ToolError, OSError):
+        return "Git workspace: Git repository status is unknown."
+    if result.returncode == 0 and result.stdout.strip() == "true":
+        return "Git workspace: This project is a Git repository."
+    if "not a git repository" in result.stderr.lower():
+        return ("Git workspace: This project is not a Git repository. Git tools will not work here "
+                "unless a repository is initialized; use file tools for ordinary file tasks.")
+    return "Git workspace: Git repository status is unknown."
+
 
 Approver = Callable[[ApprovalRequest], bool]
 
@@ -185,6 +201,8 @@ class Agent:
             os=f"{platform.system()} {platform.release()}",
             today=date.today().isoformat(),
         )
+        self._git_context = git_workspace_context(self.workspace)
+        system += "\n" + self._git_context
         # Read the project's docs up front, so the model knows what the project
         # is before its first step instead of having to think of opening them.
         if self.use_briefing:
@@ -199,6 +217,10 @@ class Agent:
 
         A question gets only the tools that read (beastron.policy); `intent="work"` gives all tools.
         """
+        git_context = git_workspace_context(self.workspace)
+        if git_context != self._git_context:
+            self.messages[0]["content"] = self.messages[0]["content"].replace(self._git_context, git_context, 1)
+            self._git_context = git_context
         mode = intent or classify(task)
         self._allowed = READ_ONLY_TOOLS if mode == QUESTION else None
         started = time.monotonic()
@@ -273,6 +295,11 @@ class Agent:
                         self.emit(Nudge("the model announced a step without taking it"))
                         self.messages.append({"role": "user", "content": NUDGE_MESSAGE})
                         continue
+                    # Exhausting the retry budget does not mean an announced or
+                    # malformed tool invocation actually completed the task.
+                    if (any(tag in reply.content for tag in ("<tool_call>", "</tool_call>", "<function="))
+                            or (nudges >= MAX_NUDGES and announces_unfinished_action(reply.content))):
+                        return finish("incomplete")
                     operation = unfinished_git_operation(self.workspace.root) if not git_reminded else None
                     if operation:
                         git_reminded = True

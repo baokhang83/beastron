@@ -217,7 +217,7 @@ def run_task(
             result.checks = [
                 {"type": o.check.type, "passed": o.passed, "reason": o.reason} for o in outcomes
             ]
-            result.passed = result.reason not in ("timeout", "error") and all(o.passed for o in outcomes)
+            result.passed = result.reason not in ("timeout", "error", "incomplete") and all(o.passed for o in outcomes)
     except (WorkspaceError, sandbox.SandboxError) as e:
         result.error = str(e)
     result.seconds = round(time.monotonic() - started, 2)

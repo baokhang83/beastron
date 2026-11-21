@@ -16,7 +16,7 @@ import openai
 from openai import OpenAI
 
 from .config import ModelProfile
-from .quirks import TagRouter, ToolCall, parse_text_tool_call, safe_arguments
+from .quirks import TagRouter, ToolCall, parse_text_tool_call, recover_function_markup, safe_arguments
 
 Message = dict[str, Any]
 OnText = Callable[[str], None]
@@ -141,6 +141,16 @@ class OpenAICompatClient:
         if not reply.tool_calls and text_calls:
             # Quirk: the model wrote its tool calls as text.
             reply.tool_calls = [parse_text_tool_call(b, i) for i, b in enumerate(text_calls)]
+            if ("recover_function_markup" in p.quirks and len(text_calls) == 1
+                    and reply.tool_calls[0].name == "invalid_tool_call"):
+                recovered = recover_function_markup(text_calls[0] + "</tool_call>", tools)
+                if recovered and not recovered[0]:
+                    reply.tool_calls = [recovered[1]]
+        elif not reply.tool_calls and "recover_function_markup" in p.quirks:
+            recovered = recover_function_markup(reply.content, tools)
+            if recovered:
+                reply.content, call = recovered
+                reply.tool_calls = [call]
         return reply
 
     def assistant_message(self, reply: ModelReply) -> Message:

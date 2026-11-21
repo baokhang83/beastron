@@ -84,3 +84,23 @@ def test_restore_staged_does_not_discard_unstaged_edit(repo):
     assert not guard.check('git restore --staged a.txt')[0][1]
     git(repo, 'add', 'a.txt')
     assert guard.check('git restore --staged a.txt')[0][1]
+
+
+@pytest.mark.parametrize('mode', ['auto', 'ask'])
+def test_permission_modes_keep_discard_guard(repo, mode, monkeypatch):
+    from io import StringIO
+    from rich.console import Console
+    from beastron.ui import RichUI
+    ui = RichUI(console=Console(file=StringIO()), mode=mode)
+    asked = []
+    monkeypatch.setattr(ui.console, 'input', lambda prompt: asked.append(prompt) or 'y')
+    replies = [ModelReply(tool_calls=[ToolCall('1', 'edit_file', json.dumps(
+                   {'path': 'a.txt', 'old_text': 'original', 'new_text': 'agent change'}))]),
+               ModelReply(tool_calls=[ToolCall('2', 'run_shell', json.dumps({'command': 'git stash'}))]),
+               ModelReply(content='done')]
+    ws = Workspace(repo)
+    agent = Agent(FakeClient(replies), ws, make_tools(ws), lambda e: None, ui.approve, briefing=False)
+    assert agent.run('fix it') == 'done'
+    assert (repo / 'a.txt').read_text() == 'agent change\n'
+    assert any('Blocked:' in m.get('content', '') for m in agent.messages if m['role'] == 'tool')
+    assert len(asked) == (1 if mode == 'ask' else 0)
