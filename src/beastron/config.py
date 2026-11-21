@@ -35,6 +35,7 @@ class ModelProfile:
     base_url: str
     model: str
     context: int = 32768
+    max_steps: int = 25
     api_key_env: str | None = None
     temperature: float | None = None
     # How hard the model thinks. Sent to the server as `reasoning_effort`.
@@ -107,7 +108,7 @@ def _parse_profile(path: Path, name: str, raw: Any) -> ModelProfile:
         raise ConfigError(f"{where}: must be a table.")
     allowed = {
         "base_url", "model", "context", "api_key_env", "temperature",
-        "effort", "quirks", "extra_body",
+        "effort", "quirks", "extra_body", "max_steps",
     }
     unknown = set(raw) - allowed
     if unknown:
@@ -115,6 +116,9 @@ def _parse_profile(path: Path, name: str, raw: Any) -> ModelProfile:
     for key in ("base_url", "model"):
         if not isinstance(raw.get(key), str) or not raw[key]:
             raise ConfigError(f"{where}: '{key}' is required.")
+    max_steps = raw.get("max_steps", 25)
+    if type(max_steps) is not int or max_steps < 1:
+        raise ConfigError(f"{where}: 'max_steps' must be a positive integer.")
     quirks = frozenset(raw.get("quirks", []))
     bad = quirks - KNOWN_QUIRKS
     if bad:
@@ -124,6 +128,7 @@ def _parse_profile(path: Path, name: str, raw: Any) -> ModelProfile:
         base_url=raw["base_url"],
         model=raw["model"],
         context=int(raw.get("context", 32768)),
+        max_steps=max_steps,
         api_key_env=raw.get("api_key_env"),
         temperature=raw.get("temperature"),
         effort=raw.get("effort"),

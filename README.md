@@ -11,7 +11,7 @@
 Beastron is an <b>experimental</b> coding agent that runs entirely on your own machine (no subscription, no per-token cost, no code sent anywhere) and a <b>measurement project</b> that answers that question with numbers. It works with any OpenAI-compatible model server, such as Ollama or LM Studio.
 </p>
 
-<a href="https://github.com/baokhang83/mnemo-warmup/actions/workflows/build.yml"><img alt="build" src="https://github.com/baokhang83/mnemo-warmup/actions/workflows/build.yml/badge.svg"></a>
+<a href="https://github.com/baokhang83/beastron/actions/workflows/ci.yml"><img alt="build" src="https://github.com/baokhang83/beastron/actions/workflows/ci.yml/badge.svg"></a>
 <a href="LICENSE"><img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
 <img alt="Status: alpha" src="https://img.shields.io/badge/status-alpha-yellow">
 
@@ -26,14 +26,17 @@ Beastron is an <b>experimental</b> coding agent that runs entirely on your own m
 | | usage-weighted score | tasks passed | median task time |
 |---|---:|---:|---:|
 | Claude Code 2.1.328, `claude-sonnet-5-5` (3 repeats) | 100% | 171 / 171 | 14 s |
-| **beastron + `qwen3.5:9b`** (latest full run) | **72.2%** | 42 / 57 | 57 s |
+| **beastron + Qwen3-Coder 30B-A3B Q3** (hybrid; see below) | **81.04%** | 47 / 57 | — |
+| beastron + Qwen3-Coder 30B-A3B Q3 (original full run) | 71.58% | 41 / 57 | 44 s |
+| beastron + `gpt-oss:20b` (full run) | 70.61% | 42 / 57 | — |
+| beastron + `qwen3.5:9b` (latest full run) | 72.2% | 42 / 57 | 57 s |
 | beastron + `qwen3.5:9b` (first run) | 66.5% | 39 / 57 | 53 s |
 | beastron + `qwen3:8b`, thinking on | 40% | 22 / 57 | 257 s |
 | **Target** | **80%** | | |
 
-Claude Code passed every run, so it sits at the ceiling and **beastron's score is also its share of the reference**: about 72%, about 8 points short.
+Claude Code passed every run, so it sits at the ceiling and **beastron's score is also its share of the reference**. The 81.04% result combines the Coder 57-task sweep with a separate Git retry and eight targeted retests (five passed); it is not a fresh full-suite baseline. The original sweep scored 71.58%, or 73.89% with the Git retry.
 
-**How far to trust that.** One repeat per task, so one-task changes are noise; a 95% range on the plain pass rate is about 61% to 83%, which still includes 80%. The latest full run was measured before the most recent harness changes (guard, reminder, empty-reply nudge), which have been tested on targeted tasks but not yet re-measured on the whole suite. The suite is 70% Java, and 18 of its 57 tasks replay commits from a handful of public repositories (with 8 more questions about them), so it measures those more than Java in general. The reference machine is the only one measured.
+**How far to trust that.** One repeat per task, so one-task changes are noise; a 95% range on the plain pass rate is about 61% to 83%, which still includes 80%. The Coder sweep used the guard, reminder and empty-reply nudge; its eight targeted retests also used the malformed-tool-call nudge and a 40-step profile limit. A fresh full-suite run with both changes has not been measured. The suite is 70% Java, and 18 of its 57 tasks replay commits from a handful of public repositories (with 8 more questions about them), so it measures those more than Java in general. The reference machine is the only one measured.
 
 **Where the missing points are:** almost all in the **long Java tasks** (the "feature" category: 4 of 13 passed, 18 weighted points missing). Short tasks (build, config, refactor, remove, tests, git) are at or near 100%.
 
@@ -49,9 +52,9 @@ Claude Code passed every run, so it sits at the ceiling and **beastron's score i
 ## What we have learned
 
 - **Worked and measured:** read-only tools for questions (no more edits when asked a question; 25 of 25 on the question tasks with the other fixes); an empty-reply nudge (git tasks 3/10 to 9/10); a reminder to finish an unfinished merge or cherry-pick (merge task 5/5 against 2/5); typed git commands understood by the git tool (tool errors 31 to 6); a guard against git commands that discard the task's changes (a `git stash` once destroyed a solved run).
-- **Tried and not supported by the data:** a per-step output cap (no step in the long runs exceeded it), close-match edits (2 of 16 failures fixable), longer step limits, build-log summaries, "read the named test first" (44 of 45 runs already did). Four-bucket model routing scored 79.7% on the data used to choose it but 71.8% with each task held out, consistent with overfitting; escalation after two failed builds or 240 seconds would have switched away from three runs that ultimately passed. The three models scored 72.2% (`qwen3.5:9b`), 70.6% (`gpt-oss:20b`) and 73.9% (Qwen3-Coder 30B-A3B Q3, including a separate Git retry).
+- **Tried and not supported by the data:** a per-step output cap (no step in the long runs exceeded it), close-match edits (2 of 16 failures fixable), an earlier longer-step-limit experiment, build-log summaries, "read the named test first" (44 of 45 runs already did). Four-bucket model routing scored 79.7% on the data used to choose it but 71.8% with each task held out, consistent with overfitting; escalation after two failed builds or 240 seconds would have switched away from three runs that ultimately passed. The three models scored 72.2% (`qwen3.5:9b`), 70.6% (`gpt-oss:20b`) and 73.9% (Qwen3-Coder 30B-A3B Q3, including a separate Git retry).
 - **Thinking off** (`qwen3.5:9b`) is inconclusive: 4 of 9 long tasks against 3 of 9 with thinking on, fewer tokens but more steps.
-- **Stronger local models help on the long tasks:** `gpt-oss:20b` and Qwen3-Coder 30B-A3B Q3 fit fully on the 24 GB M5 GPU at 32K context and substantially outperform the dense 9B model on multi-module Java. With Ollama's native `qwen3-coder` renderer and parser, Qwen3-Coder is the leading single-model candidate (73.9%, about 44 s median). Before closing model testing, try nudging malformed `<tool_call>` text leaks and raising `max_steps` from 25 to 40 for fast MoE profiles.
+- **Stronger local models help on the long tasks:** `gpt-oss:20b` and Qwen3-Coder 30B-A3B Q3 fit fully on the 24 GB M5 GPU at 32K context and substantially outperform the dense 9B model on multi-module Java. With Ollama's native `qwen3-coder` renderer and parser, Qwen3-Coder is the leading single-model candidate (73.9%, about 44 s median). With a malformed-tool-call nudge and a 40-step profile limit, five of eight targeted retests passed; a fresh full-suite run is still needed.
 
 ## What it does today
 
@@ -66,7 +69,7 @@ Claude Code passed every run, so it sits at the ceiling and **beastron's score i
 
 - **Questions get read-only tools.** A request that only asks something gets the reading tools, so editing is impossible. `/do REQUEST` runs a request with every tool.
 - **Safety:** file tools can't reach outside the project or write inside `.git/`. Shell commands run with your permissions, so read each one before approving. A guard blocks common Git discard commands (`stash`, `reset --hard`, `restore`, `clean`, `checkout --`) when they would discard changes made during the task. It is **not a security boundary**, does not cover `git branch -D`, and does not protect uncommitted work already present at the start of the task.
-- **Guardrails for small models:** a nudge when the model announces a step without taking it, when its reply is empty (including when the answer was only in its reasoning), and when a merge, cherry-pick or rebase is still unfinished at the end of the turn; invalid tool calls go back as errors; a failed edit shows the closest matching text; saying "no" ends the turn; a task stops after 25 model calls.
+- **Guardrails for small models:** a nudge when the model announces a step without taking it, when its reply is empty (including when the answer was only in its reasoning), and when a merge, cherry-pick or rebase is still unfinished at the end of the turn; invalid tool calls go back as errors; a failed edit shows the closest matching text; saying "no" ends the turn; a task stops after the profile’s step limit (25 model calls by default).
 - **A change record** from the tools themselves, not from the model's summary, which can be wrong.
 - **A project briefing:** at session start beastron reads the project's documentation (`AGENTS.md`, else `README.md`, plus linked docs).
 - **Session traces** in `~/.local/state/beastron/sessions/`: what you asked, each tool call with its output, tokens, timing and the exact model file.
@@ -117,7 +120,7 @@ beastron eval reference                   # Claude Code on the same tasks (a rea
 
 ## Models
 
-Profiles live in `models.toml`: a server URL, a model name and a context size, plus optional settings (`effort` to turn thinking off, `temperature`, `quirks` such as `send_reasoning_back` for gpt-oss, `api_key_env` for hosted providers). The default is `qwen35-9b`. Other models were compared in [docs/model-comparison.md](docs/model-comparison.md): `qwen3:8b` scored 40%, and Devstral Small 2 did not beat `qwen3.5:9b` and only fits the GPU at a 16K context. Hosted services can be used through `api_key_env`, but that sends your code to the provider, which goes against the point of the project; it is meant for benchmarking.
+Profiles live in `models.toml`: a server URL, a model name and a context size, plus optional settings (`effort` to turn thinking off, `temperature`, `max_steps` (overridden by `--max-steps` or an explicit eval task limit), `quirks` such as `send_reasoning_back` for gpt-oss, `api_key_env` for hosted providers). The default is `qwen35-9b`. Other models were compared in [docs/model-comparison.md](docs/model-comparison.md): `qwen3:8b` scored 40%, and Devstral Small 2 did not beat `qwen3.5:9b` and only fits the GPU at a 16K context. Hosted services can be used through `api_key_env`, but that sends your code to the provider, which goes against the point of the project; it is meant for benchmarking.
 
 ## Roadmap
 

@@ -1,6 +1,6 @@
 # Model comparison on the reference machine
 
-Measured on 2026-11-19 on an Apple M5 with 24 GB, a modern baseline developer machine. Models were served by Ollama 0.40.16 (started with `GGML_METAL_TENSOR_DISABLE=1 OLLAMA_CONTEXT_LENGTH=32768`) at a 32K context. The suite is the 57 tasks in `evals/tasks/` and the score is usage-weighted (`evals/usecases.json`), as in `evals/README.md`. The summaries are in `evals/results/`.
+The original comparison was measured on 2026-11-19 on an Apple M5 with 24 GB, a modern baseline developer machine. Models were served by Ollama 0.40.16 (started with `GGML_METAL_TENSOR_DISABLE=1 OLLAMA_CONTEXT_LENGTH=32768`) at a 32K context. The suite is the 57 tasks in `evals/tasks/` and the score is usage-weighted (`evals/usecases.json`), as in `evals/README.md`. The summaries are in `evals/results/`.
 
 ## What was compared, and what was not
 
@@ -10,9 +10,24 @@ Measured on 2026-11-19 on an Apple M5 with 24 GB, a modern baseline developer ma
 | `qwen3-8b-local` | `qwen3:8b` (Ollama, 5.2 GB download) | default (on) | 57 (1 repeat) |
 | `claude-code-sonnet-5-5` | Claude Code 2.1.328, `claude-sonnet-5-5` | reference, see [#19](https://github.com/baokhang83/beastron/pull/57) | 171 (3 repeats) |
 
-The owner limited the comparison to these two small models. **Measured only in part:** Devstral Small 2, see [below](#devstral-small-2-partial-stopped-early). **Not measured:** gpt-oss:20b, Qwen3-Coder 30B and Qwen3.6 27B (Q3 builds), and `qwen3-8b-fast` (qwen3:8b with thinking off). Its run was stopped after 10 runs, 1 passed, and those runs are dropped as unreliable: they are not in any number below. So **there is no measured "fast" profile**, and the larger models might do better or not fit; this document says nothing about them.
+The original comparison covered two small models. Later 57-task runs of `qwen3.5:9b`, `gpt-oss:20b` and Qwen3-Coder 30B-A3B Q3 are reported below. Devstral Small 2 was measured only in part. The `qwen3-8b-fast` run was stopped after 10 tasks and is excluded as unreliable; there is no measured fast profile for that model.
 
-## Results
+## Later 57-task runs and targeted retests
+
+| Run | Passed | Usage-weighted score |
+|---|---:|---:|
+| `qwen3.5:9b`, full run | 42 / 57 | 72.21% |
+| `gpt-oss:20b`, full run | 42 / 57 | 70.61% |
+| Qwen3-Coder 30B-A3B Q3, original full run | 41 / 57 | 71.58% |
+| Coder full run with a separate `git-branch-and-commit` retry | 42 / 57 | 73.89% |
+| **Coder hybrid: full run, Git retry and eight targeted retests** | **47 / 57** | **81.04%** |
+
+The hybrid replaces eight original failures with their targeted retest outcomes: five passed, three failed. The retests used the malformed-tool-call nudge and a 40-step profile limit together, so they do not isolate either change. The Git retry replaced an infrastructure-error attempt. **81.04% is not a fresh 57-task run or a confirmed single-run baseline.** Each entry uses one observed outcome per task; variation remains substantial. The 9B run used beastron commit `6bc938b`; the 20B and Coder sweeps used `3899d3b`, so model comparisons also include a harness-version difference.
+
+Both MoE models fit fully on the 24 GB M5 GPU at 32K context. The Coder profile used Ollama's native `qwen3-coder` renderer and parser. Across the eight retests, the markup nudge fired on `git-find-breaking-commit`, which passed; `blastradius-ea6cd1f` passed its checks at the 40-step limit. Two retests timed out and the cherry-pick remained unfinished.
+
+## Original comparison (2026-11-19)
+
 
 One repeat per task means each task is a single pass or fail, so the numbers are rough. The 95% range (Wilson score) of the plain pass rate is 56–79% for qwen3.5:9b and 27–52% for qwen3:8b.
 
@@ -70,12 +85,13 @@ Devstral is therefore **not chosen**. This does not rule out a better result wit
 
 ## The choice
 
-- **Default: `qwen35-9b`.** It scores 67% against 40%, finishes the median task in about a fifth of the time, and has no timeouts. The cost is memory: 15–17 GB against 9.4 GB.
+- **Default: `qwen35-9b`.** It remains the configured default. The later full run scored 72.21%; the original comparison below measured 67%.
+- **Candidate: Qwen3-Coder 30B-A3B Q3.** Its hybrid result is 81.04%, pending a fresh full-suite run with the two harness changes.
 - **Fast profile: none chosen.** The only fast candidate was dropped, so `models.toml` keeps `qwen3-8b-fast`, marked as unmeasured. A fast profile needs a measured candidate: for example `qwen35-9b` with thinking off, which was not run.
 - `qwen3-8b-local` stays as a smaller-memory option.
 
 ## What this does not show
 
-- The target is 80% of the reference score. The best measured model is at 67%, **not there yet**.
+- The 81.04% hybrid clears the 80% target, but a fresh single full-suite run with the current changes has not yet confirmed it.
 - One repeat per task; the Claude Code reference has three. A change of a few tasks is within the noise.
 - The reference passed every run, so the suite can't show where Claude Code is weaker than the local models, only where they fall short of it.

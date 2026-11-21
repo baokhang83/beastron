@@ -182,7 +182,7 @@ def run_task(
                 client_factory(profile), ws, make_tools(ws, shell_prefix=prefix),
                 on_event=fan_out(collector, trace, on_event),
                 approve=lambda request: True,  # evals approve everything; shell commands are sandboxed
-                max_steps=task.max_steps,
+                max_steps=task.max_steps if task.max_steps_explicit or task.max_steps != 25 else profile.max_steps,
             )
             with _time_limit(task.timeout) as timer:
                 try:

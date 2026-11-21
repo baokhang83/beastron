@@ -78,3 +78,15 @@ def test_eval_report_without_any_run_says_so(tmp_path, monkeypatch):
     result = invoke("eval", "report")
     assert result.exit_code == 1
     assert "no eval runs" in result.output
+
+
+def test_step_limit_follows_profile_unless_cli_overrides(config, monkeypatch):
+    config.write_text('[models.local]\nbase_url = "http://127.0.0.1:9/v1"\nmodel = "m"\nmax_steps = 40\n')
+    seen = []
+    def fake_run(self, task):
+        seen.append((self.max_steps, self.client.profile.max_steps))
+        return 'done'
+    monkeypatch.setattr(Agent, 'run', fake_run)
+    assert invoke('--config', str(config), '--no-trace', 'task').exit_code == 0
+    assert invoke('--config', str(config), '--no-trace', '--max-steps', '25', 'task').exit_code == 0
+    assert seen == [(None, 40), (25, 40)]
